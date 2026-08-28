@@ -1,0 +1,6 @@
+{
+  "name": "Volleyball Team Attendance Management System",
+  "description": "Professional mobile-first attendance management system for volleyball teams with Google Sheets database, role-based access control, and discipline tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
