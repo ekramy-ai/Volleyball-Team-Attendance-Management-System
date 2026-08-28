@@ -24,12 +24,12 @@ export class GoogleAppsScriptModularGenerator {
 
 const CONFIG = {
   // SPREADSHEET CONFIGURATION
-  // Set to null to use ActiveSpreadsheet (when bound to sheet), or provide custom Sheet ID string
-  SPREADSHEET_ID: null, 
+  // Official Master Google Sheet ID
+  SPREADSHEET_ID: '1o21eAko73KPY1VcYdEMgmfqc4hSaj-Y0vztBWA3Lfdw', 
 
   // OFFICIAL MASTER PLAYER DATABASE SHEET NAME
-  // Exactly matches the tab name in your existing Google Sheet.
-  MASTER_PLAYERS_SHEET_NAME: 'PLAYERS_MASTER',
+  // Active Master Sheet Configuration (Phase 11.6 Dynamic Integration)
+  MASTER_PLAYERS_SHEET_NAME: 'Volleyball Player Database',
 
   // SYSTEM AUXILIARY SHEETS
   SHEETS: {
@@ -43,17 +43,17 @@ const CONFIG = {
 
   // MASTER SHEET COLUMN MAPPINGS (Arabic Headers to Standard Keys)
   MASTER_COLUMNS: {
-    PLAYER_ID: 'Player ID',               // Unique Primary Key (e.g., M-G150101954)
-    TEAM: 'الفريق',                       // Team Name (e.g., براعم 2015 بنات)
+    PLAYER_ID: 'Player ID',               // Unique Primary Key (e.g., M-G1501019954)
+    TEAM: 'الفريق',                       // Team Name (e.g., براعم 2015)
     TEAM_BIRTH_YEAR: 'مواليد الفريق',      // Team Birth Year (e.g., 2015)
     GENDER: 'النوع',                      // Gender / Type (بنات / بنين)
     FULL_NAME: 'اسم اللاعب رباعي',         // Full 4-part name
-    SHORT_NAME: 'الاسم',                  // Short / First name
+    SHORT_NAME: 'الأسم',                  // Short / First name
     PHONE: 'رقم التليفون',                // Phone number
     DOB: 'تاريخ الميلاد',                 // Date of birth
-    CLUB: 'النادي',                       // Club name
-    BIRTH_YEAR: 'مواليد',                 // Birth year
-    RANK: 'Rank'                          // Rank / Skill rating
+    CLUB: 'النادى',                       // Club name
+    BIRTH_YEAR: 'المواليد',               // Birth year
+    RANK: 'Rank'                          // Rank / Classification
   },
 
   // ROLES & PERMISSIONS
@@ -88,10 +88,16 @@ const CONFIG = {
 };
 
 /**
- * Returns the target Google Spreadsheet instance.
+ * Returns the target Google Spreadsheet instance dynamically from the active database profile.
  * @return {GoogleAppsScript.Spreadsheet.Spreadsheet}
  */
 function getTargetSpreadsheet() {
+  if (typeof DatabaseConfigurationService !== 'undefined' && DatabaseConfigurationService.getActiveDatabase) {
+    var activeDb = DatabaseConfigurationService.getActiveDatabase();
+    if (activeDb && activeDb.spreadsheetId && activeDb.spreadsheetId.trim() !== '') {
+      return SpreadsheetApp.openById(activeDb.spreadsheetId.trim());
+    }
+  }
   if (CONFIG.SPREADSHEET_ID && CONFIG.SPREADSHEET_ID.trim() !== '') {
     return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
   }
@@ -590,29 +596,58 @@ const DatabaseService = {
 
 const PlayerService = {
   /**
-   * Dynamic Master Player Sheet Name Retrieval
+   * STEP 1: Dynamic Active Database Profile Retrieval
+   */
+  getActiveDatabase: function() {
+    if (typeof DatabaseConfigurationService !== 'undefined' && DatabaseConfigurationService.getActiveDatabase) {
+      return DatabaseConfigurationService.getActiveDatabase();
+    }
+    if (typeof DatabaseConfigService !== 'undefined' && DatabaseConfigService.getActiveDatabase) {
+      return DatabaseConfigService.getActiveDatabase();
+    }
+    return {
+      spreadsheetId: CONFIG.SPREADSHEET_ID,
+      playersSheetName: CONFIG.MASTER_PLAYERS_SHEET_NAME || 'Volleyball Player Database',
+      columnMapping: CONFIG.MASTER_COLUMNS
+    };
+  },
+
+  /**
+   * STEP 3: Dynamic Master Player Sheet Name Retrieval
    */
   getMasterPlayerSheet: function() {
-    if (typeof DatabaseConfigService !== 'undefined' && DatabaseConfigService.getActiveDatabase) {
-      const activeDb = DatabaseConfigService.getActiveDatabase();
-      if (activeDb && activeDb.playersSheetName) {
-        return activeDb.playersSheetName;
-      }
+    var activeDb = this.getActiveDatabase();
+    if (activeDb && (activeDb.playersSheetName || activeDb.PlayersSheetName)) {
+      return activeDb.playersSheetName || activeDb.PlayersSheetName;
     }
     return CONFIG.MASTER_PLAYERS_SHEET_NAME || 'Volleyball Player Database';
   },
 
   /**
-   * Dynamic Column Mapping Retrieval
+   * STEP 5: Dynamic Column Mapping Retrieval
    */
   getColumnMapping: function() {
-    if (typeof DatabaseConfigService !== 'undefined' && DatabaseConfigService.getActiveDatabase) {
-      const activeDb = DatabaseConfigService.getActiveDatabase();
-      if (activeDb && activeDb.columnMapping) {
-        return activeDb.columnMapping;
-      }
+    var activeDb = this.getActiveDatabase();
+    if (activeDb && activeDb.columnMapping) {
+      return activeDb.columnMapping;
     }
     return CONFIG.MASTER_COLUMNS;
+  },
+
+  /**
+   * Helper: Resolves column header index by application field name
+   */
+  getColumnIndexByApplicationField: function(headers, field) {
+    var mapping = this.getColumnMapping();
+    var mappedHeader = mapping[field];
+    if (!mappedHeader || !Array.isArray(headers)) return -1;
+    var target = String(mappedHeader).trim().toLowerCase();
+    for (var i = 0; i < headers.length; i++) {
+      if (String(headers[i] || '').trim().toLowerCase() === target) {
+        return i;
+      }
+    }
+    return -1;
   },
 
   /**
@@ -813,7 +848,7 @@ const PlayerService = {
     }
 
     return {
-      activeDatabaseName: (typeof DatabaseConfigService !== 'undefined') ? DatabaseConfigService.getActiveDatabase().databaseName : 'Primary',
+      activeDatabaseName: (typeof DatabaseConfigurationService !== 'undefined') ? DatabaseConfigurationService.getActiveDatabase().databaseName : 'Primary',
       activeSpreadsheetId: ss.getId(),
       activeSpreadsheetName: ss.getName(),
       configuredPlayerSheetName: sheetName,

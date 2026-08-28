@@ -4,18 +4,98 @@
  * and the 6 auxiliary system sheets.
  */
 
-// Existing Master Player Sheet Data Interface (Arabic Column Mappings)
+// Official Training Venues / Courts (أماكن التدريب / الصالة)
+export type TrainingVenue = 
+  | 'الصالة المغطاه'
+  | 'الملعب الجديد'
+  | 'ملعب التنس الرئيسي'
+  | 'ملعب التنس الفرعي';
+
+export const OFFICIAL_TRAINING_VENUES: TrainingVenue[] = [
+  'الصالة المغطاه',
+  'الملعب الجديد',
+  'ملعب التنس الرئيسي',
+  'ملعب التنس الفرعي'
+];
+
+// Official Clubs in Database (ناديين في قاعدة البيانات)
+export type OfficialClubName = 'المؤسسة' | 'راية' | 'نادى المؤسسة' | 'نادى راية';
+
+export interface OfficialClubInfo {
+  id: 'AL_MOASSASA' | 'RAYA';
+  name: string;
+  shortName: string;
+  badgeClass: string;
+  accentColor: string;
+}
+
+export const OFFICIAL_CLUBS: OfficialClubInfo[] = [
+  {
+    id: 'AL_MOASSASA',
+    name: 'نادى المؤسسة',
+    shortName: 'المؤسسة',
+    badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    accentColor: '#f59e0b'
+  },
+  {
+    id: 'RAYA',
+    name: 'نادى راية',
+    shortName: 'راية',
+    badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    accentColor: '#10b981'
+  }
+];
+
+// Official 20 Teams Definition across the 2 Clubs (الفرق العشرين التابعة للناديين مع اشتراك نفس الجهاز الفني وأماكن التدريب)
+export interface OfficialTeamDef {
+  teamName: string;
+  club: 'المؤسسة' | 'راية';
+  category: string;
+  gender: 'بنات' | 'بنين';
+  group?: string;
+  birthYear?: number;
+}
+
+export const OFFICIAL_TEAMS_20: OfficialTeamDef[] = [
+  // فرق نادى رايـــــة (9 فرق)
+  { teamName: 'راية براعم 2018+ - بنات - أ', club: 'راية', category: 'براعم 2018+', gender: 'بنات', group: 'أ', birthYear: 2018 },
+  { teamName: 'راية براعم 2018+ - بنات - ب', club: 'راية', category: 'براعم 2018+', gender: 'بنات', group: 'ب', birthYear: 2018 },
+  { teamName: 'راية براعم 2017 - بنات - أ', club: 'راية', category: 'براعم 2017', gender: 'بنات', group: 'أ', birthYear: 2017 },
+  { teamName: 'راية براعم 2017 - بنات - ب', club: 'راية', category: 'براعم 2017', gender: 'بنات', group: 'ب', birthYear: 2017 },
+  { teamName: 'راية براعم 2016 - بنات - أ', club: 'راية', category: 'براعم 2016', gender: 'بنات', group: 'أ', birthYear: 2016 },
+  { teamName: 'راية براعم 2015 - بنات - أ', club: 'راية', category: 'براعم 2015', gender: 'بنات', group: 'أ', birthYear: 2015 },
+  { teamName: 'راية براعم 2015&2016 - بنات - ب', club: 'راية', category: 'براعم 2015&2016', gender: 'بنات', group: 'ب', birthYear: 2015 },
+  { teamName: 'راية تحت 13 سنة - بنات - أ', club: 'راية', category: 'تحت 13 سنة', gender: 'بنات', group: 'أ', birthYear: 2013 },
+  { teamName: 'راية تحت 19 سنة - بنات - أ', club: 'راية', category: 'تحت 19 سنة', gender: 'بنات', group: 'أ', birthYear: 2007 },
+
+  // فرق نادى المؤسسة (11 فريق)
+  { teamName: 'المؤسسة براعم 2015 - بنات', club: 'المؤسسة', category: 'براعم 2015', gender: 'بنات', birthYear: 2015 },
+  { teamName: 'المؤسسة براعم 2015 - بنين', club: 'المؤسسة', category: 'براعم 2015', gender: 'بنين', birthYear: 2015 },
+  { teamName: 'المؤسسة تحت 13 سنة - بنات - أ', club: 'المؤسسة', category: 'تحت 13 سنة', gender: 'بنات', group: 'أ', birthYear: 2013 },
+  { teamName: 'المؤسسة تحت 13 سنة - بنات - ب', club: 'المؤسسة', category: 'تحت 13 سنة', gender: 'بنات', group: 'ب', birthYear: 2013 },
+  { teamName: 'المؤسسة تحت 13 سنة - بنين - أ', club: 'المؤسسة', category: 'تحت 13 سنة', gender: 'بنين', group: 'أ', birthYear: 2013 },
+  { teamName: 'المؤسسة تحت 15 سنة - بنات - أ', club: 'المؤسسة', category: 'تحت 15 سنة', gender: 'بنات', group: 'أ', birthYear: 2011 },
+  { teamName: 'المؤسسة تحت 15 سنة - بنات - ب', club: 'المؤسسة', category: 'تحت 15 سنة', gender: 'بنات', group: 'ب', birthYear: 2011 },
+  { teamName: 'المؤسسة تحت 15 سنة - بنات - ج', club: 'المؤسسة', category: 'تحت 15 سنة', gender: 'بنات', group: 'ج', birthYear: 2011 },
+  { teamName: 'المؤسسة تحت 15 سنة - بنين - أ', club: 'المؤسسة', category: 'تحت 15 سنة', gender: 'بنين', group: 'أ', birthYear: 2011 },
+  { teamName: 'المؤسسة تحت 17 سنة - بنات - أ', club: 'المؤسسة', category: 'تحت 17 سنة', gender: 'بنات', group: 'أ', birthYear: 2009 },
+  { teamName: 'المؤسسة تحت 17 سنة - بنات - ب', club: 'المؤسسة', category: 'تحت 17 سنة', gender: 'بنات', group: 'ب', birthYear: 2009 }
+];
+
 export interface MasterPlayerRow {
-  'Player ID': string;                 // e.g. "M-G150101954" (Unique Primary Key)
-  'الفريق': string;                    // Team (e.g. "براعم 2015 بنات", "براعم 2014 بنات", "براعم 2015 بنين")
+  'Player ID'?: string;                // e.g. "M-G150101954" (Unique Primary Key)
+  'الفريق'?: string;                   // Team (e.g. "براعم 2015", "تحت 13")
   'مواليد الفريق'?: string | number;   // Team Birth Year (e.g. 2015, 2014)
   'النوع'?: string;                    // Gender/Type (e.g. "بنات", "بنين", "Female", "Male")
-  'اسم اللاعب رباعي': string;          // Full Player Name (4 parts)
-  'الاسم': string;                     // Short / First Name
+  'اسم اللاعب رباعي'?: string;         // Full Player Name (4 parts)
+  'الاسم'?: string;                    // Short / First Name
+  'الأسم'?: string;                    // Alternative Arabic spelling with Hamza
   'رقم التليفون'?: string;             // Phone Number
-  'تاريخ الميلاد'?: string;            // Date of Birth (YYYY-MM-DD)
-  'النادي'?: string;                   // Club Name (e.g. "النادي الأهلي", "نادي الزهور", "نادي الصيد")
-  'مواليد'?: string | number;          // Birth Year (e.g. 2015)
+  'تاريخ الميلاد'?: string;            // Date of Birth
+  'النادي'?: string;                   // Club Name
+  'النادى'?: string;                   // Alternative Arabic spelling
+  'مواليد'?: string | number;          // Birth Year
+  'المواليد'?: string | number;        // Alternative Arabic spelling
   'Rank'?: string | number;            // Rank / Rating in team
   [key: string]: any;                  // Future-proof dynamic additional columns
 }
@@ -44,7 +124,8 @@ export interface CoachRecord {
   Phone: string;
   Role: 'ADMIN' | 'HEAD_COACH' | 'ASSISTANT_COACH';
   AccountStatus: 'Active' | 'Inactive';
-  CreatedAt: string;                   // ISO Date
+  Club?: string;                       // "المؤسسة" / "راية"
+  CreatedAt?: string;                  // ISO Date
 }
 
 // 2. COACH_TEAMS SHEET (Main Authorization Layer)
@@ -53,25 +134,41 @@ export interface CoachTeamRecord {
   CoachID: string;                     // Reference to COACHES.CoachID
   CoachName?: string;                  // Helpful display reference
   CoachEmail?: string;                 // Fast lookup cache
-  TeamName: string;                    // Exactly matches Master Sheet 'الفريق' (e.g. "براعم 2015 بنات")
+  TeamName: string;                    // Exactly matches Master Sheet 'الفريق' (e.g. "براعم 2015", "المؤسسة براعم 2015 - بنات")
+  Club?: string;                       // "المؤسسة" / "راية"
   TeamBirthYear?: string | number;
   PermissionLevel: 'FULL_MANAGE' | 'RECORD_ONLY';
   Active: boolean;
-  CreatedAt: string;
+  CreatedAt?: string;
+  Schedules?: {
+    sat?: string;
+    sun?: string;
+    mon?: string;
+    tue?: string;
+    wed?: string;
+    thu?: string;
+    fri?: string;
+    [day: string]: string | undefined;
+  };
+  UnitsPerWeek?: string;               // e.g. "4 وحدات تدريبية"
 }
 
 // 3. TRAINING_SESSIONS SHEET
 export interface TrainingSessionRecord {
   SessionID: string;                   // SESSION-2026-0001
   TeamName: string;                    // Matches 'الفريق'
-  TeamBirthYear: string | number;
-  TrainingDate: string;                // YYYY-MM-DD
-  StartTime: string;                   // HH:mm (e.g. "18:00")
-  EndTime: string;                     // HH:mm (e.g. "19:30")
-  Location: string;                    // Court A / Hall 1
+  TeamBirthYear?: string | number;
+  TrainingDate?: string;               // YYYY-MM-DD
+  Day?: string;                        // "السبت", "الأحد", etc.
+  SlotID?: string;                     // "T1", "T2", "T3", "T4"
+  TimeRange?: string;                  // "5:00 PM → 6:30 PM"
+  StartTime: string;                   // HH:mm (e.g. "18:00" or "17:00")
+  EndTime: string;                     // HH:mm (e.g. "19:30" or "18:30")
+  Location: string;                    // Court Name / Hall (e.g. "ملعب التنس الرئيسي")
+  Court?: string;                      // Alternative alias for location
   CoachID: string;
   CoachName: string;
-  CreatedAt: string;
+  CreatedAt?: string;
   Status?: 'Scheduled' | 'Completed' | 'Cancelled';
   Notes?: string;
 }
@@ -718,6 +815,17 @@ export interface Phase11_6DiagnosticTest {
   passed: boolean;
   errorCode?: string;
   details: string;
+}
+
+export interface Phase11_6DiagnosticResult {
+  phase: number;
+  title: string;
+  passed: number;
+  failed: number;
+  total: number;
+  status: string;
+  tests: Phase11_6DiagnosticTest[];
+  timestamp: string;
 }
 
 // -------------------------------------------------------------

@@ -58,7 +58,7 @@ export const TrainingSessionsView: React.FC<TrainingSessionsViewProps> = ({ init
   const [formDate, setFormDate] = useState<string>('');
   const [formStartTime, setFormStartTime] = useState<string>('17:00');
   const [formEndTime, setFormEndTime] = useState<string>('18:30');
-  const [formLocation, setFormLocation] = useState<string>('الصالة المغطاة 1 - الملعب الرئيسي');
+  const [formLocation, setFormLocation] = useState<string>('الصالة المغطاه');
   const [formNotes, setFormNotes] = useState<string>('');
   const [formStatus, setFormStatus] = useState<'Scheduled' | 'Completed' | 'Cancelled'>('Scheduled');
   
@@ -70,12 +70,14 @@ export const TrainingSessionsView: React.FC<TrainingSessionsViewProps> = ({ init
   const isAdmin = currentUser?.role === 'ADMIN';
   const authorizedTeams = isAdmin ? availableTeams : (currentUser?.authorizedTeams || []);
 
+  const [clubFilter, setClubFilter] = useState<string>('ALL');
+
+  // Official 4 Training Venues / Courts (أماكن التدريب / الصالة)
   const locationPresets = [
-    'الصالة المغطاة 1 - الملعب الرئيسي',
-    'الصالة المغطاة 1 - الملعب الفرعي',
-    'مجمع صالات التدريب - صالة 2',
-    'الملعب الخارجي المفتوح',
-    'صالة اللياقة البدنية والجمباز'
+    'الصالة المغطاه',
+    'الملعب الجديد',
+    'ملعب التنس الرئيسي',
+    'ملعب التنس الفرعي'
   ];
 
   // Fetch sessions from API
@@ -122,7 +124,7 @@ export const TrainingSessionsView: React.FC<TrainingSessionsViewProps> = ({ init
     setFormDate(today);
     setFormStartTime('17:00');
     setFormEndTime('18:30');
-    setFormLocation('الصالة المغطاة 1 - الملعب الرئيسي');
+    setFormLocation('الصالة المغطاه');
     setFormNotes('');
     setFormStatus('Scheduled');
     setConflictWarning('');
@@ -136,7 +138,7 @@ export const TrainingSessionsView: React.FC<TrainingSessionsViewProps> = ({ init
     setFormDate(session.TrainingDate || '');
     setFormStartTime(session.StartTime || '17:00');
     setFormEndTime(session.EndTime || '18:30');
-    setFormLocation(session.Location || 'الصالة المغطاة 1 - الملعب الرئيسي');
+    setFormLocation(session.Location || 'الصالة المغطاه');
     setFormNotes(session.Notes || '');
     setFormStatus(session.Status || 'Scheduled');
     setConflictWarning('');
@@ -323,12 +325,16 @@ export const TrainingSessionsView: React.FC<TrainingSessionsViewProps> = ({ init
 
   // Filtered session list
   const filteredSessions = sessions.filter(s => {
+    if (clubFilter !== 'ALL') {
+      const matchClub = s.TeamName.includes(clubFilter);
+      if (!matchClub) return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matchId = s.SessionID.toLowerCase().includes(q);
       const matchTeam = s.TeamName.toLowerCase().includes(q);
-      const matchLoc = s.Location.toLowerCase().includes(q);
-      const matchCoach = s.CoachName.toLowerCase().includes(q);
+      const matchLoc = (s.Location || s.Court || '').toLowerCase().includes(q);
+      const matchCoach = (s.CoachName || '').toLowerCase().includes(q);
       if (!matchId && !matchTeam && !matchLoc && !matchCoach) return false;
     }
     return true;
@@ -447,17 +453,33 @@ export const TrainingSessionsView: React.FC<TrainingSessionsViewProps> = ({ init
       {/* 3. Filters and Search Bar */}
       <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-5 shadow-2xs space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Club Filter */}
+          <div>
+            <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5">
+              {language === 'ar' ? 'النادي (المؤسسة / راية)' : 'Club (Al-Moassasa / Raya)'}
+            </label>
+            <select
+              value={clubFilter}
+              onChange={e => setClubFilter(e.target.value)}
+              className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+            >
+              <option value="ALL">{language === 'ar' ? '🏛️ كلا الناديين (المؤسسة & راية)' : '🏛️ Both Clubs'}</option>
+              <option value="المؤسسة">{language === 'ar' ? '🏢 نادى المؤسسة' : 'Al-Moassasa Club'}</option>
+              <option value="راية">{language === 'ar' ? '⚡ نادى راية' : 'Raya Club'}</option>
+            </select>
+          </div>
+
           {/* Team Filter */}
           <div>
             <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 mb-1.5">
-              {language === 'ar' ? 'تصفية حسب الفريق المصرح' : 'Filter by Authorized Team'}
+              {language === 'ar' ? 'تصفية حسب الفريق' : 'Filter by Team'}
             </label>
             <select
               value={teamFilter}
               onChange={e => setTeamFilter(e.target.value)}
               className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
-              <option value="ALL">{language === 'ar' ? '🌟 كل الفرق المصرح بها' : '🌟 All Authorized Teams'}</option>
+              <option value="ALL">{language === 'ar' ? '🌟 كل الفرق' : '🌟 All Teams'}</option>
               {authorizedTeams.map(t => (
                 <option key={t} value={t}>🏐 {t}</option>
               ))}

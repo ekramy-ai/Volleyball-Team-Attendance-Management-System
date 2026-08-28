@@ -15,30 +15,27 @@ async function startServer() {
   // -------------------------------------------------------------
 
   // 1. Get Master Database Overview & Stats
+  // 1. Get Master Database Overview & Stats
   app.get('/api/database/overview', (req, res) => {
     try {
-      const allPlayers = MasterDatabaseService.getAllMasterPlayers();
-      const distinctTeams = MasterDatabaseService.getDistinctTeams();
-      const coaches = MasterDatabaseService.getAllCoaches();
-      const assignments = MasterDatabaseService.getAllCoachAssignments();
-      const sessions = MasterDatabaseService.getTrainingSessions();
+      const overview = MasterDatabaseService.getDatabaseOverview();
       const attendance = MasterDatabaseService.getAttendanceRecords();
       const logs = MasterDatabaseService.getAuditLogs();
       const settings = MasterDatabaseService.getSystemSettings();
 
       res.json({
         success: true,
+        ...overview,
         stats: {
-          masterPlayersCount: allPlayers.length,
-          distinctTeamsCount: distinctTeams.length,
-          coachesCount: coaches.length,
-          assignmentsCount: assignments.length,
-          sessionsCount: sessions.length,
+          masterPlayersCount: overview.totalPlayers,
+          distinctTeamsCount: overview.distinctTeams.length,
+          coachesCount: overview.totalCoaches,
+          assignmentsCount: overview.totalAssignments,
+          sessionsCount: overview.totalWeeklySessions,
           attendanceRecordsCount: attendance.length,
           auditLogsCount: logs.length,
           settingsCount: settings.length
         },
-        distinctTeams,
         masterColumns: [
           'Player ID',
           'الفريق',
@@ -118,15 +115,50 @@ async function startServer() {
   });
 
 
-  // 3. Query Master Players by Exact Team Name (e.g. "براعم 2015 بنات")
+  // 3. Query Master Players by Exact Team Name (e.g. "براعم 2015 بنات") with Coach Authorization Guard
   app.get('/api/master/players/by-team', (req, res) => {
     try {
-      const teamName = String(req.query.teamName || '').trim();
+      const teamName = String(req.query.teamName || req.query.team || '').trim();
       if (!teamName) {
-        return res.status(400).json({ success: false, error: 'Query parameter "teamName" is required.' });
+        return res.status(400).json({ success: false, error: 'Query parameter "teamName" or "team" is required.' });
       }
+
+      // Security Authorization Check for Coach Requests
+      const userEmail = String(req.headers['x-user-email'] || req.headers['x-admin-email'] || req.query.userEmail || req.query.email || '').trim();
+      if (userEmail) {
+        const authRes = MasterDatabaseService.getAuthorizedPlayersForCoach(userEmail, teamName);
+        if (!authRes.authorized) {
+          return res.status(403).json({
+            success: false,
+            errorCode: authRes.errorCode || 'UNAUTHORIZED_TEAM_ACCESS',
+            error: authRes.error || `Coach is not authorized to access players for team "${teamName}".`,
+            authorizedTeams: MasterDatabaseService.getCurrentUser(userEmail).authorizedTeams || []
+          });
+        }
+        return res.json({
+          success: true,
+          teamName,
+          count: authRes.count,
+          players: authRes.normalizedPlayers,
+          standardized: authRes.players
+        });
+      }
+
+      // Default query (Admin or Internal)
       const players = MasterDatabaseService.getPlayersByTeam(teamName);
-      res.json({ success: true, teamName, count: players.length, players });
+      const standardized = MasterDatabaseService.getStandardizedPlayersByTeam(teamName);
+      res.json({ success: true, teamName, count: players.length, players, standardized });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 3.1 Live Synchronization with Google Sheet
+  app.all('/api/master/sync-google-sheet', async (req, res) => {
+    try {
+      const spreadsheetId = req.query.spreadsheetId || req.body?.spreadsheetId;
+      const syncResult = await MasterDatabaseService.syncFromGoogleSheet(spreadsheetId ? String(spreadsheetId) : undefined);
+      res.json(syncResult);
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -141,6 +173,39 @@ async function startServer() {
         return res.status(404).json({ success: false, error: `Player with ID '${playerId}' not found in master database.` });
       }
       res.json({ success: true, player });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+
+
+  // 4.2 Official Clubs Endpoint
+  app.get('/api/clubs', (req, res) => {
+    try {
+      const clubs = MasterDatabaseService.getOfficialClubs();
+      res.json({ success: true, count: clubs.length, clubs });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 4.3 Official Training Venues Endpoint (الصالة المغطاه، الملعب الجديد، ملعب التنس الرئيسي، ملعب التنس الفرعي)
+  app.get('/api/venues', (req, res) => {
+    try {
+      const venues = MasterDatabaseService.getOfficialTrainingVenues();
+      res.json({ success: true, count: venues.length, venues });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 4.4 Official 20 Teams Definition across Clubs
+  app.get('/api/teams/official', (req, res) => {
+    try {
+      const club = req.query.club ? String(req.query.club) : undefined;
+      const teams = club ? MasterDatabaseService.getOfficialTeamsByClub(club) : MasterDatabaseService.getOfficial20Teams();
+      res.json({ success: true, count: teams.length, teams });
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -334,6 +399,81 @@ async function startServer() {
   // -------------------------------------------------------------
   // PHASE 4: ADMIN MANAGEMENT SYSTEM API
   // -------------------------------------------------------------
+
+  // 15.1 Official Coaches Google Sheet API
+  app.get('/api/coaches', (req, res) => {
+    try {
+      const coaches = MasterDatabaseService.getAllCoaches();
+      res.json({ success: true, count: coaches.length, coaches });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/coaches/assignments', (req, res) => {
+    try {
+      const coachEmail = req.query.coachEmail || req.query.email;
+      const coachId = req.query.coachId;
+      const target = coachEmail ? String(coachEmail) : (coachId ? String(coachId) : undefined);
+      let assignments = MasterDatabaseService.getAllCoachAssignments();
+      if (target) {
+        const coach = MasterDatabaseService.getCoachByEmail(target) || MasterDatabaseService.getCoachById(target);
+        if (coach) {
+          assignments = MasterDatabaseService.getAssignmentsForCoach(coach.CoachID);
+        } else {
+          assignments = assignments.filter(a => a.CoachID.toLowerCase() === target.toLowerCase() || (a.CoachEmail && a.CoachEmail.toLowerCase() === target.toLowerCase()));
+        }
+      }
+      res.json({ success: true, count: assignments.length, assignments });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/coaches/schedules', (req, res) => {
+    try {
+      const coachId = req.query.coachId ? String(req.query.coachId) : undefined;
+      const teamName = req.query.teamName || req.query.team ? String(req.query.teamName || req.query.team) : undefined;
+      const day = req.query.day ? String(req.query.day) : undefined;
+      const sessions = MasterDatabaseService.getWeeklyTrainingSessions({ coachId, teamName, day });
+      res.json({ success: true, count: sessions.length, sessions });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/coaches/by-id/:id', (req, res) => {
+    try {
+      const coach = MasterDatabaseService.getCoachById(req.params.id) || MasterDatabaseService.getCoachByEmail(req.params.id);
+      if (!coach) {
+        return res.status(404).json({ success: false, error: `Coach '${req.params.id}' not found.` });
+      }
+      const assignments = MasterDatabaseService.getAssignmentsForCoach(coach.CoachID);
+      const schedules = MasterDatabaseService.getWeeklyTrainingSessions({ coachId: coach.CoachID });
+      res.json({ success: true, coach, assignments, schedules });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.all('/api/coaches/sync-google-sheet', async (req, res) => {
+    try {
+      const spreadsheetId = req.query.spreadsheetId || req.body?.spreadsheetId;
+      const result = await MasterDatabaseService.syncCoachesFromGoogleSheet(spreadsheetId ? String(spreadsheetId) : undefined);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get('/api/training-sessions', (req, res) => {
+    try {
+      const sessions = MasterDatabaseService.getWeeklyTrainingSessions();
+      res.json({ success: true, count: sessions.length, sessions });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
 
   // 16. Admin Coach Management: List All Coaches
   app.get('/api/admin/coaches', (req, res) => {

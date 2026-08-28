@@ -26,6 +26,7 @@ export const PlayersView: React.FC = () => {
   const { t, language, isRtl, currentUser } = useApp();
   const [players, setPlayers] = useState<NormalizedPlayer[]>([]);
   const [teams, setTeams] = useState<string[]>([]);
+  const [selectedClub, setSelectedClub] = useState<string>('ALL');
   const [selectedTeam, setSelectedTeam] = useState<string>('ALL');
   const [selectedBirthYear, setSelectedBirthYear] = useState<string>('ALL');
   const [selectedGender, setSelectedGender] = useState<string>('ALL');
@@ -83,6 +84,13 @@ export const PlayersView: React.FC = () => {
   // Multi-criteria Filtering
   const filteredPlayers = useMemo(() => {
     return players.filter(p => {
+      // 0. Club Filter (المؤسسة vs راية)
+      if (selectedClub !== 'ALL') {
+        const normClub = selectedClub.replace(/\u0640/g, '').trim();
+        const playerClub = (p.club || '').replace(/\u0640/g, '').trim();
+        if (!playerClub.includes(normClub)) return false;
+      }
+
       // 1. Team Filter
       if (selectedTeam !== 'ALL' && p.teamName !== selectedTeam) {
         return false;
@@ -114,7 +122,7 @@ export const PlayersView: React.FC = () => {
 
       return true;
     });
-  }, [players, selectedTeam, selectedBirthYear, selectedGender, searchQuery]);
+  }, [players, selectedClub, selectedTeam, selectedBirthYear, selectedGender, searchQuery]);
 
   // Export filtered list to CSV
   const handleExportCSV = () => {
@@ -199,7 +207,7 @@ export const PlayersView: React.FC = () => {
           <span>{language === 'ar' ? 'أدوات البحث والفلترة المتقدمة' : 'Advanced Search & Multi-Filter'}</span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Search Box */}
           <div className="relative">
             <Search className={`w-4 h-4 text-slate-400 absolute top-3 ${isRtl ? 'right-3.5' : 'left-3.5'}`} />
@@ -207,11 +215,24 @@ export const PlayersView: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder={language === 'ar' ? 'ابحث بالكود (Player ID) أو الاسم...' : 'Search by Player ID or Name...'}
+              placeholder={language === 'ar' ? 'ابحث بالكود أو الاسم...' : 'Search by ID or Name...'}
               className={`w-full text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 py-2.5 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-hidden transition ${
                 isRtl ? 'pr-9 pl-3' : 'pl-9 pr-3'
               }`}
             />
+          </div>
+
+          {/* Club Filter */}
+          <div>
+            <select
+              value={selectedClub}
+              onChange={e => setSelectedClub(e.target.value)}
+              className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-hidden"
+            >
+              <option value="ALL">🏛️ {language === 'ar' ? 'جميع الأندية' : 'All Clubs'}</option>
+              <option value="المؤسسة">🏢 {language === 'ar' ? 'نادى المؤسسة' : 'Al-Moassasa Club'}</option>
+              <option value="راية">⚡ {language === 'ar' ? 'نادى راية' : 'Raya Club'}</option>
+            </select>
           </div>
 
           {/* Team Filter */}
@@ -221,9 +242,9 @@ export const PlayersView: React.FC = () => {
               onChange={e => setSelectedTeam(e.target.value)}
               className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-hidden"
             >
-              <option value="ALL">🏟️ {language === 'ar' ? 'جميع الفرق المعتمدة' : 'All Teams'} ({teams.length})</option>
-              {teams.map(team => (
-                <option key={team} value={team}>{team}</option>
+              <option value="ALL">🏐 {language === 'ar' ? 'جميع الفرق' : 'All Teams'}</option>
+              {teams.map(t => (
+                <option key={t} value={t}>{t}</option>
               ))}
             </select>
           </div>
@@ -235,7 +256,7 @@ export const PlayersView: React.FC = () => {
               onChange={e => setSelectedBirthYear(e.target.value)}
               className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-hidden"
             >
-              <option value="ALL">📅 {language === 'ar' ? 'جميع سنوات المواليد' : 'All Birth Years'} ({availableBirthYears.length})</option>
+              <option value="ALL">📅 {language === 'ar' ? 'جميع المواليد' : 'All Birth Years'} ({availableBirthYears.length})</option>
               {availableBirthYears.map(yr => (
                 <option key={yr} value={yr}>
                   {language === 'ar' ? `مواليد ${yr}` : `Year ${yr}`}
@@ -251,7 +272,7 @@ export const PlayersView: React.FC = () => {
               onChange={e => setSelectedGender(e.target.value)}
               className="w-full text-xs font-medium px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:outline-hidden"
             >
-              <option value="ALL">👥 {language === 'ar' ? 'جميع الأنواع (بنات / بنين)' : 'All Genders'}</option>
+              <option value="ALL">👥 {language === 'ar' ? 'جميع الأنواع' : 'All Genders'}</option>
               {availableGenders.map(g => (
                 <option key={g} value={g}>{g}</option>
               ))}
@@ -268,9 +289,10 @@ export const PlayersView: React.FC = () => {
             <span>{language === 'ar' ? `إجمالي السجل: ${players.length}` : `Total Master: ${players.length}`}</span>
           </div>
 
-          {(selectedTeam !== 'ALL' || selectedBirthYear !== 'ALL' || selectedGender !== 'ALL' || searchQuery) && (
+          {(selectedClub !== 'ALL' || selectedTeam !== 'ALL' || selectedBirthYear !== 'ALL' || selectedGender !== 'ALL' || searchQuery) && (
             <button
               onClick={() => {
+                setSelectedClub('ALL');
                 setSelectedTeam('ALL');
                 setSelectedBirthYear('ALL');
                 setSelectedGender('ALL');
@@ -352,8 +374,16 @@ export const PlayersView: React.FC = () => {
                     <td className="px-4 py-3 font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap dir-ltr text-start">
                       {player.phone || '-'}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 dark:text-slate-400 whitespace-nowrap truncate max-w-[140px]">
-                      {player.club || '-'}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {player.club ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          player.club.includes('المؤسسة')
+                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                        }`}>
+                          {player.club.includes('المؤسسة') ? '🏢 المؤسسة' : '⚡ راية'}
+                        </span>
+                      ) : '-'}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {player.rank ? (

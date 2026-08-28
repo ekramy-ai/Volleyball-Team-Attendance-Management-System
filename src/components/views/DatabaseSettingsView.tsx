@@ -363,6 +363,20 @@ export const DatabaseSettingsView: React.FC = () => {
     }
   };
 
+  // Run Phase 11.6 Master Player Database Integration Diagnostic Suite
+  const handleRunPhase11_6Diagnostics = async () => {
+    setIsRunningDiagnostics(true);
+    try {
+      const res = await fetch('/api/diagnostics/phase11-6');
+      const data = await res.json();
+      setDiagnosticReport(data);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'فشل تشغيل الفحص التشخيصي للمرحلة 11.6');
+    } finally {
+      setIsRunningDiagnostics(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-3xl p-8 text-center max-w-2xl mx-auto my-12">
@@ -413,7 +427,15 @@ export const DatabaseSettingsView: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-emerald-800/80 hover:bg-emerald-900 text-white font-bold text-xs border border-emerald-500/40 transition"
           >
             <Activity className={`w-4 h-4 ${isRunningDiagnostics ? 'animate-spin' : ''}`} />
-            <span>{language === 'ar' ? 'فحص تشخيصي للمرحلة 11.5' : 'Run Phase 11.5 Diagnostics'}</span>
+            <span>{language === 'ar' ? 'فحص تشخيصي 11.5' : 'Phase 11.5 Tests'}</span>
+          </button>
+          <button
+            onClick={handleRunPhase11_6Diagnostics}
+            disabled={isRunningDiagnostics}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-teal-800/90 hover:bg-teal-900 text-white font-bold text-xs border border-teal-400/40 transition shadow-xs"
+          >
+            <Activity className={`w-4 h-4 ${isRunningDiagnostics ? 'animate-spin' : ''}`} />
+            <span>{language === 'ar' ? 'فحص تكامل اللاعبين 11.6' : 'Phase 11.6 Player Tests'}</span>
           </button>
         </div>
       </div>

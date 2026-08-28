@@ -33,6 +33,7 @@ export const AdminDashboardView: React.FC = () => {
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Filters State
+  const [selectedClub, setSelectedClub] = useState<string>('ALL');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string>('ALL');
@@ -60,7 +61,7 @@ export const AdminDashboardView: React.FC = () => {
       params.append('sortBy', sortBy);
       params.append('sortOrder', sortOrder);
 
-      const adminEmail = currentUser?.email || 'admin@volleyball.club';
+      const adminEmail = currentUser?.userEmail || 'admin@volleyball.club';
       const res = await fetch(`/api/analytics/admin-dashboard?${params.toString()}`, {
         headers: {
           'x-admin-email': adminEmail,
@@ -86,6 +87,7 @@ export const AdminDashboardView: React.FC = () => {
   }, [startDate, endDate, selectedTeam, selectedBirthYear, selectedGender, sortBy, sortOrder]);
 
   const resetFilters = () => {
+    setSelectedClub('ALL');
     setStartDate('');
     setEndDate('');
     setSelectedTeam('ALL');
@@ -145,6 +147,77 @@ export const AdminDashboardView: React.FC = () => {
             <span className="text-[11px] text-slate-400 font-mono">
               {language === 'ar' ? 'آخر تحديث: ' : 'Updated: '} {overview ? new Date().toLocaleTimeString() : ''}
             </span>
+          </div>
+        </div>
+      </div>
+
+      {/* CLUBS & VENUES ARCHITECTURE BANNER */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* The 2 Clubs */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🏛️</span>
+              <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                {language === 'ar' ? 'الأندية المعتمدة بالمنظومة (ناديين)' : 'Affiliated Clubs (2 Clubs)'}
+              </h4>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              {language === 'ar' ? 'جهاز فني مشترك' : 'Unified Staff'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-amber-700 dark:text-amber-300">
+                <span>🏢</span>
+                <span>نادى المؤسسة</span>
+              </div>
+              <span className="text-[11px] text-amber-600/80 dark:text-amber-400/80 block mt-1">
+                11 فريق (براعم 2015، تحت 13، 15، 17)
+              </span>
+            </div>
+            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-700 dark:text-emerald-300">
+                <span>⚡</span>
+                <span>نادى رايـــــة</span>
+              </div>
+              <span className="text-[11px] text-emerald-600/80 dark:text-emerald-400/80 block mt-1">
+                9 فرق (براعم 2018+ إلى تحت 19)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* The 4 Training Venues */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📍</span>
+              <h4 className="font-bold text-xs text-slate-900 dark:text-slate-100">
+                {language === 'ar' ? 'أماكن التدريب المعتمدة (4 ملاعب وصالات)' : 'Training Venues & Courts (4)'}
+              </h4>
+            </div>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20">
+              {language === 'ar' ? 'مقر تدريب موحد' : 'Unified Training Facility'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
+            <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+              <span>الصالة المغطاه</span>
+            </div>
+            <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+              <span>الملعب الجديد</span>
+            </div>
+            <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span>ملعب التنس الرئيسي</span>
+            </div>
+            <div className="px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-purple-500"></span>
+              <span>ملعب التنس الفرعي</span>
+            </div>
           </div>
         </div>
       </div>
@@ -280,7 +353,23 @@ export const AdminDashboardView: React.FC = () => {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+          {/* Club Filter */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">
+              {language === 'ar' ? 'النادي' : 'Club'}
+            </label>
+            <select
+              value={selectedClub}
+              onChange={(e) => setSelectedClub(e.target.value)}
+              className="w-full text-xs font-semibold px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-orange-500/20"
+            >
+              <option value="ALL">{language === 'ar' ? 'كلا الناديين' : 'Both Clubs'}</option>
+              <option value="المؤسسة">{language === 'ar' ? '🏢 نادى المؤسسة' : 'Al-Moassasa'}</option>
+              <option value="راية">{language === 'ar' ? '⚡ نادى راية' : 'Raya'}</option>
+            </select>
+          </div>
+
           {/* Start Date */}
           <div>
             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mb-1">

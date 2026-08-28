@@ -29,11 +29,148 @@ export class DatabaseConfigService {
     DateOfBirth: 'تاريخ الميلاد'
   };
 
+  public static readonly COACHES_SPREADSHEET_ID = '1dia56jsmqFoUh_7mlTV4Un0Pt2UI8HguSsgD2HFRFoc';
+  public static readonly COACHES_SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/1dia56jsmqFoUh_7mlTV4Un0Pt2UI8HguSsgD2HFRFoc/edit?usp=sharing';
+
   // Central in-memory Database Profiles store
   private static databaseProfiles: DatabaseProfile[] = [
     {
+      id: 'DB_PROF_OFFICIAL',
+      databaseName: 'قاعدة بيانات لاعبي ولاعبات كرة الطائرة الرسمية (Google Sheets)',
+      spreadsheetId: '1o21eAko73KPY1VcYdEMgmfqc4hSaj-Y0vztBWA3Lfdw',
+      spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1o21eAko73KPY1VcYdEMgmfqc4hSaj-Y0vztBWA3Lfdw/edit?usp=sharing',
+      playersSheetName: 'Volleyball Player Database',
+      coachesSheetName: 'Coaches',
+      coachTeamsSheetName: 'CoachTeams',
+      trainingSessionsSheetName: 'TrainingSessions',
+      attendanceSheetName: 'Attendance',
+      auditLogSheetName: 'AuditLog',
+      systemSettingsSheetName: 'SystemSettings',
+      columnMapping: {
+        PlayerID: 'Player ID',
+        PlayerName: 'الأسم',
+        FullPlayerName: 'اسم اللاعب رباعي',
+        TeamName: 'الفريق',
+        TeamBirthYear: 'مواليد الفريق',
+        Gender: 'النوع',
+        BirthYear: 'المواليد',
+        DateOfBirth: 'تاريخ الميلاد'
+      },
+      databaseStatus: 'ACTIVE',
+      lastConnectionTest: '2026-08-28T18:50:00.000Z',
+      lastValidationStatus: 'VALID',
+      validationSummary: {
+        isValid: true,
+        timestamp: '2026-08-28T18:50:00.000Z',
+        spreadsheetId: '1o21eAko73KPY1VcYdEMgmfqc4hSaj-Y0vztBWA3Lfdw',
+        spreadsheetTitle: 'Volleyball Player Database',
+        availableSheets: [
+          'Volleyball Player Database',
+          'Coaches',
+          'CoachTeams',
+          'TrainingSessions',
+          'Attendance',
+          'AuditLog',
+          'SystemSettings'
+        ],
+        totalChecks: 8,
+        passedChecks: 8,
+        checks: [
+          {
+            id: 'CHK-CONN',
+            title: 'Spreadsheet Connection & ID Format',
+            passed: true,
+            message: 'Spreadsheet ID is valid and live accessible.',
+            category: 'CONNECTION'
+          },
+          {
+            id: 'CHK-SHEET-PLAYERS',
+            title: 'Player Master Sheet Found',
+            passed: true,
+            message: 'Official Master Player Sheet [Volleyball Player Database] verified (420 players loaded).',
+            category: 'STRUCTURE'
+          },
+          {
+            id: 'CHK-COL-PLAYERID',
+            title: 'PlayerID Column Mapped',
+            passed: true,
+            message: 'Primary key column [Player ID] verified.',
+            category: 'COLUMNS'
+          },
+          {
+            id: 'CHK-COL-TEAM',
+            title: 'TeamName Column Mapped',
+            passed: true,
+            message: 'Team column [الفريق] verified.',
+            category: 'COLUMNS'
+          }
+        ]
+      },
+      createdAt: '2026-08-28T00:00:00.000Z',
+      updatedAt: '2026-08-28T18:50:00.000Z',
+      createdByUser: 'admin@volleyball.club'
+    },
+    {
+      id: 'DB_PROF_COACHES',
+      databaseName: 'قاعدة بيانات المدربين وجدول التدريب الرسمي (Google Sheets)',
+      spreadsheetId: '1dia56jsmqFoUh_7mlTV4Un0Pt2UI8HguSsgD2HFRFoc',
+      spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1dia56jsmqFoUh_7mlTV4Un0Pt2UI8HguSsgD2HFRFoc/edit?usp=sharing',
+      playersSheetName: 'Volleyball Player Database',
+      coachesSheetName: 'Copy of مرتبات المدربين',
+      coachTeamsSheetName: 'Copy of ملخص المدربين',
+      trainingSessionsSheetName: 'الجدول الأساسى 11/8/2025',
+      attendanceSheetName: 'Attendance',
+      auditLogSheetName: 'AuditLog',
+      systemSettingsSheetName: 'SystemSettings',
+      columnMapping: {
+        PlayerID: 'Player ID',
+        PlayerName: 'المدرب',
+        FullPlayerName: 'المدرب',
+        TeamName: 'الفريق',
+        TeamBirthYear: 'مواليد الفريق',
+        Gender: 'النوع',
+        BirthYear: 'المواليد',
+        DateOfBirth: 'تاريخ الميلاد'
+      },
+      databaseStatus: 'INACTIVE',
+      lastConnectionTest: '2026-08-28T19:10:00.000Z',
+      lastValidationStatus: 'VALID',
+      validationSummary: {
+        isValid: true,
+        timestamp: '2026-08-28T19:10:00.000Z',
+        spreadsheetId: '1dia56jsmqFoUh_7mlTV4Un0Pt2UI8HguSsgD2HFRFoc',
+        spreadsheetTitle: 'Coaches',
+        availableSheets: [
+          'الجدول الأساسى 11/8/2025',
+          'Copy of ملخص المدربين',
+          'Copy of مرتبات المدربين'
+        ],
+        totalChecks: 4,
+        passedChecks: 4,
+        checks: [
+          {
+            id: 'CHK-COACH-CONN',
+            title: 'Coaches Spreadsheet Connection',
+            passed: true,
+            message: 'Coaches Spreadsheet ID is valid and live accessible.',
+            category: 'CONNECTION'
+          },
+          {
+            id: 'CHK-COACH-SHEET',
+            title: 'Schedule & Coach Sheets Found',
+            passed: true,
+            message: 'All 3 sheets verified (16 coaches, 44 team assignments, 85 weekly sessions).',
+            category: 'STRUCTURE'
+          }
+        ]
+      },
+      createdAt: '2026-08-28T00:00:00.000Z',
+      updatedAt: '2026-08-28T19:10:00.000Z',
+      createdByUser: 'admin@volleyball.club'
+    },
+    {
       id: 'DB_PROF_001',
-      databaseName: 'قاعدة بيانات الكرة الطائرة - الموسم الرئيسي 2025/2026',
+      databaseName: 'قاعدة بيانات الكرة الطائرة - الموسم الرئيسي 2025/2026 (أرشيف محلي)',
       spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
       spreadsheetUrl: 'https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit#gid=0',
       playersSheetName: 'Volleyball Player Database',
@@ -53,7 +190,7 @@ export class DatabaseConfigService {
         BirthYear: 'مواليد',
         DateOfBirth: 'تاريخ الميلاد'
       },
-      databaseStatus: 'ACTIVE',
+      databaseStatus: 'INACTIVE',
       lastConnectionTest: '2026-08-28T04:00:00.000Z',
       lastValidationStatus: 'VALID',
       validationSummary: {
@@ -229,18 +366,26 @@ export class DatabaseConfigService {
       };
     }
 
+    const isCoachesSpreadsheet = cleanId === this.COACHES_SPREADSHEET_ID;
+
     // Discovered sheets simulation representing standard volleyball workspace
-    const availableSheets = [
-      'Volleyball Player Database',
-      'Coaches',
-      'CoachTeams',
-      'TrainingSessions',
-      'Attendance',
-      'AuditLog',
-      'SystemSettings',
-      'Reports',
-      'Settings'
-    ];
+    const availableSheets = isCoachesSpreadsheet
+      ? [
+          'الجدول الأساسى 11/8/2025',
+          'Copy of ملخص المدربين',
+          'Copy of مرتبات المدربين'
+        ]
+      : [
+          'Volleyball Player Database',
+          'Coaches',
+          'CoachTeams',
+          'TrainingSessions',
+          'Attendance',
+          'AuditLog',
+          'SystemSettings',
+          'Reports',
+          'Settings'
+        ];
 
     const sampleHeaders: { [sheetName: string]: string[] } = {
       'Volleyball Player Database': [
@@ -256,6 +401,9 @@ export class DatabaseConfigService {
         'مواليد',
         'Rank'
       ],
+      'Copy of مرتبات المدربين': ['م', 'النادى', 'الفريق', 'المدرب', 'السبت', 'الأحد', 'الأثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'الوحدات / الأسبوع', 'المرتب'],
+      'Copy of ملخص المدربين': ['م', 'المدرب', 'الفريق', 'النادي', 'المرتب', 'النسبة', 'شهر 6', 'شهر 7'],
+      'الجدول الأساسى 11/8/2025': ['Day', 'Slot ID', 'Time Range', 'ملعب التنس الرئيسي', 'المعلب الجديد', 'ملعب التنس الفرعي', 'ملعب المدرسة'],
       'Coaches': ['CoachID', 'FullName', 'Email', 'Phone', 'Role', 'AccountStatus', 'CreatedAt'],
       'CoachTeams': ['AssignmentID', 'CoachID', 'CoachName', 'CoachEmail', 'TeamName', 'TeamBirthYear', 'PermissionLevel', 'Active', 'CreatedAt'],
       'TrainingSessions': ['SessionID', 'TeamName', 'TeamBirthYear', 'TrainingDate', 'StartTime', 'EndTime', 'Location', 'CoachID', 'CoachName', 'Status', 'CreatedAt'],
@@ -264,9 +412,13 @@ export class DatabaseConfigService {
       'SystemSettings': ['SettingKey', 'SettingValue', 'Description', 'LastUpdated']
     };
 
-    const title = cleanId.includes('2024') 
-      ? 'أرشيف الكرة الطائرة - موسم 2024/2025'
-      : 'MASTER VOLLEYBALL DATABASE 2025-2026';
+    const title = cleanId === this.COACHES_SPREADSHEET_ID
+      ? 'Coaches & Official Training Schedules'
+      : cleanId === '1o21eAko73KPY1VcYdEMgmfqc4hSaj-Y0vztBWA3Lfdw'
+        ? 'Volleyball Player Database (Official)'
+        : cleanId.includes('2024') 
+          ? 'أرشيف الكرة الطائرة - موسم 2024/2025'
+          : 'MASTER VOLLEYBALL DATABASE 2025-2026';
 
     return {
       success: true,

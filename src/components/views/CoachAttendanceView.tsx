@@ -93,7 +93,7 @@ export const CoachAttendanceView: React.FC = () => {
   const [quickDate, setQuickDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [quickStartTime, setQuickStartTime] = useState<string>('18:00');
   const [quickEndTime, setQuickEndTime] = useState<string>('19:30');
-  const [quickLocation, setQuickLocation] = useState<string>('الصالة المغطاة 1 - الملعب الرئيسي');
+  const [quickLocation, setQuickLocation] = useState<string>('الصالة المغطاه');
   const [creatingSession, setCreatingSession] = useState<boolean>(false);
   const [createSessionError, setCreateSessionError] = useState<string | null>(null);
 
@@ -163,8 +163,12 @@ export const CoachAttendanceView: React.FC = () => {
 
       setAuthChecked(true);
 
-      // 2. Fetch Master Players for this team
-      const rosterRes = await fetch(`/api/master/players/by-team?team=${encodeURIComponent(team)}`);
+      // 2. Fetch Master Players for this team (Guarded by Coach Authorization)
+      const rosterRes = await fetch(`/api/master/players/by-team?teamName=${encodeURIComponent(team)}`, {
+        headers: {
+          'x-user-email': currentUser?.userEmail || ''
+        }
+      });
       const rosterData = await rosterRes.json();
 
       if (!rosterData.success) {
@@ -1186,6 +1190,22 @@ export const CoachAttendanceView: React.FC = () => {
                   onChange={e => setQuickLocation(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-emerald-500"
                 />
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {['الصالة المغطاه', 'الملعب الجديد', 'ملعب التنس الرئيسي', 'ملعب التنس الفرعي'].map(v => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setQuickLocation(v)}
+                      className={`text-[10px] px-2 py-0.5 rounded-lg border transition ${
+                        quickLocation === v
+                          ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 font-bold'
+                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-300'
+                      }`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="pt-2 flex items-center justify-end gap-2">

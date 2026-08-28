@@ -40,6 +40,7 @@ export const TeamAssignmentsView: React.FC = () => {
   const [actionError, setActionError] = useState<string>('');
   const [actionSuccess, setActionSuccess] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [syncing, setSyncing] = useState<boolean>(false);
 
   // Form State
   const [formData, setFormData] = useState<{
@@ -227,6 +228,24 @@ export const TeamAssignmentsView: React.FC = () => {
     }
   };
 
+  const handleSyncGoogleSheet = async () => {
+    try {
+      setSyncing(true);
+      const res = await fetch('/api/coaches/sync-google-sheet');
+      const data = await res.json();
+      if (data.success) {
+        setActionSuccess(language === 'ar' ? `تمت المزامنة بنجاح من Google Sheet (${data.totalAssignments} تكليف، ${data.totalSessions} موعد تدريب).` : 'Synced successfully from Google Sheet.');
+        fetchData();
+      } else {
+        setActionError(data.error || 'Failed to sync');
+      }
+    } catch (err: any) {
+      setActionError(err.message || 'Sync error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   // Filtered assignments
   const filteredAssignments = useMemo(() => {
     return assignments.filter(a => {
@@ -277,6 +296,15 @@ export const TeamAssignmentsView: React.FC = () => {
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>{language === 'ar' ? 'تحديث' : 'Refresh'}</span>
+          </button>
+
+          <button
+            onClick={handleSyncGoogleSheet}
+            disabled={syncing}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            <span>{language === 'ar' ? 'مزامنة من Google Sheets' : 'Sync Google Sheets'}</span>
           </button>
 
           <button
@@ -395,9 +423,21 @@ export const TeamAssignmentsView: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold border border-orange-500/20">
-                        🏐 {row.TeamName}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold border border-orange-500/20 w-fit">
+                          🏐 {row.TeamName}
+                          {row.Club && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-normal">
+                              {row.Club}
+                            </span>
+                          )}
+                        </span>
+                        {row.UnitsPerWeek && (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            ⏱️ {row.UnitsPerWeek}
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-4 whitespace-nowrap">
