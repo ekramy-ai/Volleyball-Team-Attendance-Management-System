@@ -1713,8 +1713,36 @@
       "Court": "ملعب التنس الفرعي",
       "CoachID": "COACH-0002",
       "CoachName": "الكابتن / أحمد سالم",
-      "Status": "Scheduled",
+      "Status": "Completed",
       "CreatedAt": "2026-08-28T16:16:06.449Z"
+    },
+    {
+      "SessionID": "SESSION-2026-0086",
+      "TeamName": "براعم 2015 بنات",
+      "TeamBirthYear": 2015,
+      "TrainingDate": "2026-11-20",
+      "StartTime": "16:00",
+      "EndTime": "17:30",
+      "Location": "الملعب الجديد",
+      "CoachID": "COACH-0001",
+      "CoachName": "الكابتن / إكرامي حسن (رئيس الجهاز)",
+      "Status": "Scheduled",
+      "Notes": "تحديث الموقع لاختبار الإنتاج",
+      "CreatedAt": "2026-09-02T13:29:09.356Z"
+    },
+    {
+      "SessionID": "SESSION-2026-0087",
+      "TeamName": "براعم 2015 بنات",
+      "TeamBirthYear": 2015,
+      "TrainingDate": "2026-12-25",
+      "StartTime": "10:00",
+      "EndTime": "11:30",
+      "Location": "الصالة المغطاة",
+      "CoachID": "COACH-0001",
+      "CoachName": "الكابتن / إكرامي حسن (رئيس الجهاز)",
+      "Status": "Cancelled",
+      "Notes": "تحديث الحصة الاختبارية | إلغاء: إلغاء اختباري",
+      "CreatedAt": "2026-09-02T13:29:23.787Z"
     }
   ]
 }

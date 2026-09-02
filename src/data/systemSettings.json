@@ -1,0 +1,80 @@
+[
+  {
+    "SettingKey": "CLUB_NAME",
+    "SettingValue": "أكاديمية كرة الطائرة للناشئين والبراعم",
+    "Description": "الاسم الرسمي للنادي والأكاديمية",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "TIMEZONE",
+    "SettingValue": "Africa/Cairo",
+    "Description": "النطاق الزمني القياسي المعتمد للتسجيل",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "MASTER_PLAYER_SHEET",
+    "SettingValue": "PLAYERS_MASTER",
+    "Description": "اسم ورقة العمل الرسمية للاعبين واللاعبات",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "LATE_GRACE_PERIOD_MINUTES",
+    "SettingValue": "10",
+    "Description": "دقائق السماح قبل احتساب التأخير التلقائي",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "DISCIPLINE_STARTING_POINTS",
+    "SettingValue": "100",
+    "Description": "الرصيد الافتتاحي لنقاط الانضباط لكل لاعب",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "DISCIPLINE_UNEXCUSED_ABSENCE_PENALTY",
+    "SettingValue": "10",
+    "Description": "خصم الغياب بدون إذن مسبق (نقاط)",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "DISCIPLINE_EXCUSED_ABSENCE_PENALTY",
+    "SettingValue": "3",
+    "Description": "خصم الغياب بإذن مسبق (نقاط)",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "DISCIPLINE_LATE_PENALTY",
+    "SettingValue": "2",
+    "Description": "خصم التأخير عن موعد الحصة (نقاط)",
+    "LastUpdated": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "SettingKey": "ALERT_MAX_ABSENCES",
+    "SettingValue": "3",
+    "Description": "الحد الأقصى للغيابات قبل إطلاق تنبيه للاعب",
+    "LastUpdated": "2026-09-01T00:00:00.000Z"
+  },
+  {
+    "SettingKey": "ALERT_ABSENCE_WINDOW_DAYS",
+    "SettingValue": "30",
+    "Description": "نافذة حساب الغيابات بالأيام",
+    "LastUpdated": "2026-09-01T00:00:00.000Z"
+  },
+  {
+    "SettingKey": "ALERT_MAX_LATENESS",
+    "SettingValue": "3",
+    "Description": "الحد الأقصى لمرات التأخير قبل إطلاق تنبيه",
+    "LastUpdated": "2026-09-01T00:00:00.000Z"
+  },
+  {
+    "SettingKey": "ALERT_LATENESS_WINDOW_DAYS",
+    "SettingValue": "30",
+    "Description": "نافذة حساب التأخيرات بالأيام",
+    "LastUpdated": "2026-09-01T00:00:00.000Z"
+  },
+  {
+    "SettingKey": "ALERT_MIN_TEAM_ATTENDANCE_PCT",
+    "SettingValue": "75",
+    "Description": "الحد الأدنى لنسبة حضور الفريق قبل إطلاق تنبيه (%)",
+    "LastUpdated": "2026-09-01T00:00:00.000Z"
+  }
+]

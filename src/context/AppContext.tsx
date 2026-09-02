@@ -370,8 +370,8 @@ const translations: Record<Language, Translations> = {
     retry: 'إعادة المحاولة',
     quickActions: 'إجراءات سريعة',
     sportsManagement: 'إدارة تدريبات وبطولات الكرة الطائرة',
-    phase3Badge: 'Phase 3: Mobile UI & Navigation',
-    selectRoleToSimulate: 'اختر الحساب النشط لاختبار صلاحيات وتجربة المستخدم:',
+    phase3Badge: 'المنظومة الإنتاجية المعتمدة',
+    selectRoleToSimulate: 'اختر الحساب الرسمي لتسجيل الدخول كمدرب أو مدير فني:',
     loggedOutMessage: 'تم تسجيل الخروج بنجاح. يرجى تسجيل الدخول للوصول لمنظومة التدريب.',
     accessDenied: 'غير مصرح بالوصول لهذا القسم',
     accessDeniedDesc: 'يتطلب هذا القسم صلاحيات أعلى غير متوفرة في حسابك الحالي.',
@@ -564,8 +564,8 @@ const translations: Record<Language, Translations> = {
     retry: 'Retry',
     quickActions: 'Quick Actions',
     sportsManagement: 'Volleyball Practice & Match Management',
-    phase3Badge: 'Phase 3: Mobile UI & Navigation',
-    selectRoleToSimulate: 'Select active Google account to test role permissions and UI experience:',
+    phase3Badge: 'Production Operational System',
+    selectRoleToSimulate: 'Select official account to sign in as Coach or Administrator:',
     loggedOutMessage: 'Signed out successfully. Please sign in to access team management.',
     accessDenied: 'Access Denied',
     accessDeniedDesc: 'This section requires higher administrative privileges.',
@@ -826,8 +826,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const res = await fetch('/api/database/overview');
       const data = await res.json();
-      if (data.success && data.distinctTeams) {
+      if (data.success && data.distinctTeams && data.distinctTeams.length > 0) {
         setAvailableTeams(data.distinctTeams);
+        setSelectedTeam(prev => data.distinctTeams.includes(prev) ? prev : data.distinctTeams[0]);
       }
     } catch (err) {
       console.error('Failed to load teams:', err);

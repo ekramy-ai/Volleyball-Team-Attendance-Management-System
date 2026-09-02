@@ -83,294 +83,64 @@ import {
   MonthlyTeamTrackingSummary
 } from '../types/database';
 import { DatabaseConfigService } from './databaseConfigService';
+import { PersistenceService } from './persistenceService';
 import officialMasterPlayersData from '../data/officialMasterPlayers.json';
 import officialCoachesAndSchedulesData from '../data/officialCoachesAndSchedules.json';
+import initialAttendanceData from '../data/attendanceRecords.json';
+import initialAuditLogsData from '../data/auditLogs.json';
+import initialSystemSettingsData from '../data/systemSettings.json';
 
 export class MasterDatabaseService {
   // Official Master Player Sheet Data directly linked to the official Google Spreadsheet
   private static masterPlayers: MasterPlayerRow[] = officialMasterPlayersData as unknown as MasterPlayerRow[];
 
-  // 1. COACHES SHEET (Linked to Official Coaches Google Sheet: 1dia56jsmqFoUh_7mlTV4Un0Pt2UI8HguSsgD2HFRFoc)
+  // 1. COACHES SHEET (Linked to Official Coaches Google Sheet & Persistent Storage)
   private static coaches: CoachRecord[] = officialCoachesAndSchedulesData.coaches as unknown as CoachRecord[];
 
   // 2. COACH_TEAMS SHEET (Official Team Assignments and Weekly Schedules)
   private static coachTeams: CoachTeamRecord[] = officialCoachesAndSchedulesData.assignments as unknown as CoachTeamRecord[];
 
-  // 3. TRAINING_SESSIONS SHEET (Official Weekly Training Timetable: 85 Weekly Sessions)
+  // 3. TRAINING_SESSIONS SHEET (Official Weekly Training Timetable)
   private static trainingSessions: TrainingSessionRecord[] = officialCoachesAndSchedulesData.weeklySessions as unknown as TrainingSessionRecord[];
 
-  // 4. ATTENDANCE SHEET (Linked to Real Google Sheet Player IDs)
-  private static attendanceRecords: AttendanceRecord[] = [
-    {
-      AttendanceID: 'ATT-00001',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1501019954',
-      PlayerName: 'امنيه ابراهيم سعيد ابراهيم',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'PRESENT',
-      ArrivalTime: '17:55',
-      LateMinutes: 0,
-      Notes: 'حضور منتظم ومستوى تدريبي ممتاز',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T18:02:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00002',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1501154414',
-      PlayerName: 'تاليا سليمان محمود',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'LATE',
-      ArrivalTime: '18:18',
-      LateMinutes: 18,
-      ExcuseType: 'Travel',
-      Notes: 'ازدحام مروري في الطريق',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T18:20:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00003',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1509129087',
-      PlayerName: 'روجيندا كرم احمد',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'EXCUSED',
-      ExcuseType: 'Illness',
-      Notes: 'إذن مسبق من ولي الأمر لدواعي صحية',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T18:10:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00004',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1503021369',
-      PlayerName: 'رودينا محمد شعبان',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'PRESENT',
-      ArrivalTime: '17:50',
-      LateMinutes: 0,
-      Notes: 'حضور مبكر ومشاركة متميزة',
-      CoachID: 'COACH-0003',
-      CoachName: 'الكابتن / سارة النجار',
-      Timestamp: '2026-08-26T17:05:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00005',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1502106272',
-      PlayerName: 'رودينا محمود فوزى محمد',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'ABSENT',
-      Notes: 'غياب بدون عذر مسبق',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T19:00:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00006',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1501080309',
-      PlayerName: 'ريم طارق هاني عبدالقوى',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'PRESENT',
-      ArrivalTime: '17:50',
-      LateMinutes: 0,
-      Notes: 'حضور في الموعد وتمارين لياقة بدنية ممتازة',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T18:00:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00007',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1504223166',
-      PlayerName: 'سيلين خالد سمير',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'PRESENT',
-      ArrivalTime: '17:55',
-      LateMinutes: 0,
-      Notes: 'التزام بالحضور والمشاركة',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T18:00:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00008',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1507130094',
-      PlayerName: 'عائشه احمد عوض الله',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'ABSENT',
-      Notes: 'غياب بدون إخطار مسبق',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T18:00:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00009',
-      SessionID: 'SESSION-2026-0001',
-      PlayerID: 'M-G1506129262',
-      PlayerName: 'كلارس محمود سلامه',
-      TeamName: 'براعم 2015',
-      TrainingDate: '2026-08-25',
-      AttendanceStatus: 'PRESENT',
-      ArrivalTime: '17:58',
-      LateMinutes: 0,
-      Notes: 'أداء ممتاز في تدريبات الإرسال',
-      CoachID: 'COACH-0002',
-      CoachName: 'الكابتن / أحمد فتحي',
-      Timestamp: '2026-08-25T18:00:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00010',
-      SessionID: 'SESSION-2026-0002',
-      PlayerID: 'M-B1303104099',
-      PlayerName: 'ياسين احمد علي',
-      TeamName: 'تحت 13',
-      TrainingDate: '2026-08-26',
-      AttendanceStatus: 'PRESENT',
-      ArrivalTime: '16:50',
-      LateMinutes: 0,
-      Notes: 'حضور مبكر',
-      CoachID: 'COACH-0003',
-      CoachName: 'الكابتن / سارة النجار',
-      Timestamp: '2026-08-26T17:00:00.000Z'
-    },
-    {
-      AttendanceID: 'ATT-00011',
-      SessionID: 'SESSION-2026-0002',
-      PlayerID: 'M-B1303165583',
-      PlayerName: 'ياسين احمد محمد احمد',
-      TeamName: 'تحت 13',
-      TrainingDate: '2026-08-26',
-      AttendanceStatus: 'PRESENT',
-      ArrivalTime: '16:55',
-      LateMinutes: 0,
-      Notes: 'التزام تام بالتدريب',
-      CoachID: 'COACH-0003',
-      CoachName: 'الكابتن / سارة النجار',
-      Timestamp: '2026-08-26T17:00:00.000Z'
-    }
-  ];
+  // 4. ATTENDANCE SHEET (Linked to Real Persistent Attendance Records)
+  private static attendanceRecords: AttendanceRecord[] = (initialAttendanceData || []) as unknown as AttendanceRecord[];
 
-  // 5. AUDIT_LOG SHEET
-  private static auditLogs: AuditLogRecord[] = [
-    {
-      LogID: 'LOG-00001',
-      UserEmail: 'admin@volleyball.club',
-      UserRole: 'ADMIN',
-      Action: 'SYSTEM_INIT',
-      EntityType: 'DATABASE',
-      EntityID: 'ALL_SHEETS',
-      Details: 'Phase 1 Master Player Database Integration Initialized safely.',
-      Timestamp: '2026-08-27T02:00:00.000Z'
-    },
-    {
-      LogID: 'LOG-00002',
-      UserEmail: 'coach.ahmed@volleyball.club',
-      UserRole: 'HEAD_COACH',
-      Action: 'ATTENDANCE_RECORDED',
-      EntityType: 'ATTENDANCE',
-      EntityID: 'SESSION-2026-0001',
-      Details: 'Recorded attendance for 3 players in team براعم 2015 بنات',
-      Timestamp: '2026-08-25T18:25:00.000Z'
-    }
-  ];
-  private static auditLogCounter: number = 2;
+  // 5. AUDIT_LOG SHEET (Linked to Real Persistent Audit Logs)
+  private static auditLogs: AuditLogRecord[] = (initialAuditLogsData || []) as unknown as AuditLogRecord[];
+  private static auditLogCounter: number = (initialAuditLogsData || []).length || 1;
 
-  // 6. SYSTEM_SETTINGS SHEET
-  private static systemSettings: SystemSettingRecord[] = [
-    {
-      SettingKey: 'CLUB_NAME',
-      SettingValue: 'أكاديمية كرة الطائرة للناشئين والبراعم',
-      Description: 'الاسم الرسمي للنادي والأكاديمية',
-      LastUpdated: '2026-08-27T02:00:00.000Z'
-    },
-    {
-      SettingKey: 'TIMEZONE',
-      SettingValue: 'Africa/Cairo',
-      Description: 'النطاق الزمني القياسي المعتمد للتسجيل',
-      LastUpdated: '2026-08-27T02:00:00.000Z'
-    },
-    {
-      SettingKey: 'MASTER_PLAYER_SHEET',
-      SettingValue: 'PLAYERS_MASTER',
-      Description: 'اسم ورقة العمل الرسمية للاعبين واللاعبات',
-      LastUpdated: '2026-08-27T02:00:00.000Z'
-    },
-    {
-      SettingKey: 'LATE_GRACE_PERIOD_MINUTES',
-      SettingValue: '10',
-      Description: 'دقائق السماح قبل احتساب التأخير التلقائي',
-      LastUpdated: '2026-08-27T02:00:00.000Z'
-    },
-    {
-      SettingKey: 'DISCIPLINE_STARTING_POINTS',
-      SettingValue: '100',
-      Description: 'الرصيد الافتتاحي لنقاط الانضباط لكل لاعب',
-      LastUpdated: '2026-08-28T02:00:00.000Z'
-    },
-    {
-      SettingKey: 'DISCIPLINE_UNEXCUSED_ABSENCE_PENALTY',
-      SettingValue: '10',
-      Description: 'خصم الغياب بدون إذن مسبق (نقاط)',
-      LastUpdated: '2026-08-28T02:00:00.000Z'
-    },
-    {
-      SettingKey: 'DISCIPLINE_EXCUSED_ABSENCE_PENALTY',
-      SettingValue: '3',
-      Description: 'خصم الغياب بإذن مسبق (نقاط)',
-      LastUpdated: '2026-08-28T02:00:00.000Z'
-    },
-    {
-      SettingKey: 'DISCIPLINE_LATE_PENALTY',
-      SettingValue: '2',
-      Description: 'خصم التأخير عن موعد الحصة (نقاط)',
-      LastUpdated: '2026-08-28T02:00:00.000Z'
-    },
-    // ── Phase 13: Smart Alert Thresholds ──────────────────────
-    {
-      SettingKey: 'ALERT_MAX_ABSENCES',
-      SettingValue: '3',
-      Description: 'الحد الأقصى للغيابات قبل إطلاق تنبيه للاعب',
-      LastUpdated: '2026-09-01T00:00:00.000Z'
-    },
-    {
-      SettingKey: 'ALERT_ABSENCE_WINDOW_DAYS',
-      SettingValue: '30',
-      Description: 'نافذة حساب الغيابات بالأيام',
-      LastUpdated: '2026-09-01T00:00:00.000Z'
-    },
-    {
-      SettingKey: 'ALERT_MAX_LATENESS',
-      SettingValue: '3',
-      Description: 'الحد الأقصى لمرات التأخير قبل إطلاق تنبيه',
-      LastUpdated: '2026-09-01T00:00:00.000Z'
-    },
-    {
-      SettingKey: 'ALERT_LATENESS_WINDOW_DAYS',
-      SettingValue: '30',
-      Description: 'نافذة حساب التأخيرات بالأيام',
-      LastUpdated: '2026-09-01T00:00:00.000Z'
-    },
-    {
-      SettingKey: 'ALERT_MIN_TEAM_ATTENDANCE_PCT',
-      SettingValue: '75',
-      Description: 'الحد الأدنى لنسبة حضور الفريق قبل إطلاق تنبيه (%)',
-      LastUpdated: '2026-09-01T00:00:00.000Z'
-    }
-  ];
+  // 6. SYSTEM_SETTINGS SHEET (Linked to Real Persistent System Settings)
+  private static systemSettings: SystemSettingRecord[] = (initialSystemSettingsData || []) as unknown as SystemSettingRecord[];
+
+  // ==================== ENTERPRISE DISK PERSISTENCE ENGINE ====================
+
+  /**
+   * Persists data atomically to disk in Node environment to ensure 100% production persistence.
+   */
+  public static persistFile(filename: string, data: any): void {
+    PersistenceService.saveFile(filename, data);
+  }
+
+  public static persistCoachesAndSchedules(): void {
+    this.persistFile('officialCoachesAndSchedules.json', {
+      coaches: this.coaches,
+      assignments: this.coachTeams,
+      weeklySessions: this.trainingSessions
+    });
+  }
+
+  public static persistAttendance(): void {
+    this.persistFile('attendanceRecords.json', this.attendanceRecords);
+  }
+
+  public static persistAuditLogs(): void {
+    this.persistFile('auditLogs.json', this.auditLogs);
+  }
+
+  public static persistSettings(): void {
+    this.persistFile('systemSettings.json', this.systemSettings);
+  }
 
   // 7. ALERTS STORE (Phase 13)
   private static alerts: AlertRecord[] = [];
@@ -1152,6 +922,8 @@ export class MasterDatabaseService {
       `Added coach "${newCoach.FullName}" with role "${newCoach.Role}" and email "${newCoach.Email}".`
     );
 
+    this.persistCoachesAndSchedules();
+
     return { success: true, coach: newCoach };
   }
 
@@ -1211,6 +983,8 @@ export class MasterDatabaseService {
       target.CoachID,
       `Updated coach profile for "${target.FullName}" (${target.CoachID}). Role: ${target.Role}, Status: ${target.AccountStatus}.`
     );
+
+    this.persistCoachesAndSchedules();
 
     return { success: true, coach: { ...target } };
   }
@@ -1315,6 +1089,8 @@ export class MasterDatabaseService {
       `Assigned Coach "${coach.FullName}" to Team "${teamName}" with level "${newAssignment.PermissionLevel}".`
     );
 
+    this.persistCoachesAndSchedules();
+
     return { success: true, assignment: newAssignment };
   }
 
@@ -1360,6 +1136,8 @@ export class MasterDatabaseService {
       `Updated assignment ${target.AssignmentID}: Team "${target.TeamName}", Permission: ${target.PermissionLevel}, Active: ${target.Active}.`
     );
 
+    this.persistCoachesAndSchedules();
+
     return { success: true, assignment: { ...target } };
   }
 
@@ -1402,6 +1180,8 @@ export class MasterDatabaseService {
       removed.AssignmentID,
       `Removed assignment of Coach "${removed.CoachName}" from Team "${removed.TeamName}".`
     );
+
+    this.persistCoachesAndSchedules();
 
     return { success: true };
   }
@@ -1591,8 +1371,9 @@ export class MasterDatabaseService {
       Timestamp: timestamp
     };
 
-    // Store in memory (and simulated sheet)
+    // Store in memory and persistent storage
     this.auditLogs.unshift(record);
+    this.persistAuditLogs();
     return record;
   }
 
@@ -2100,6 +1881,8 @@ export class MasterDatabaseService {
       `إنشاء تدريب جديد لفريق [${newSession.TeamName}] بتاريخ [${newSession.TrainingDate}] من [${newSession.StartTime}] إلى [${newSession.EndTime}] بموقع [${newSession.Location}] بواسطة [${user.fullName || userEmail}]`
     );
 
+    this.persistCoachesAndSchedules();
+
     return { success: true, session: newSession, guard };
   }
 
@@ -2180,6 +1963,8 @@ export class MasterDatabaseService {
       `تحديث بيانات التدريب [${sessionId}] لفريق [${updatedSession.TeamName}] (${updatedSession.TrainingDate} ${updatedSession.StartTime}-${updatedSession.EndTime})`
     );
 
+    this.persistCoachesAndSchedules();
+
     return { success: true, session: updatedSession };
   }
 
@@ -2220,6 +2005,8 @@ export class MasterDatabaseService {
       sessionId,
       `إلغاء التدريب [${sessionId}] لفريق [${session.TeamName}] بتاريخ [${session.TrainingDate}] - السبب: ${reason || 'لم يحدد'}`
     );
+
+    this.persistCoachesAndSchedules();
 
     return { success: true, session };
   }
@@ -2267,6 +2054,8 @@ export class MasterDatabaseService {
       sessionId,
       `حذف الحصة التدريبية [${sessionId}] لفريق [${session.TeamName}] بتاريخ [${session.TrainingDate}]`
     );
+
+    this.persistCoachesAndSchedules();
 
     return { success: true };
   }
@@ -2459,6 +2248,8 @@ export class MasterDatabaseService {
       `قام المدرب [${user.fullName || userEmail}] بضبط جدول مواعيد وملاعب تدريبات فريق [${teamName}] (${slots.length} مواعيد أسبوعية: ${slots.map(s => `${s.day} ${s.startTime}-${s.endTime} @ ${s.location}`).join(', ')})`
     );
 
+    this.persistCoachesAndSchedules();
+
     return {
       success: true,
       teamName,
@@ -2589,6 +2380,8 @@ export class MasterDatabaseService {
       teamName,
       `قام المدرب [${user.fullName || userEmail}] بتوليد جدول وحدات تدريب شهر [${monthLabel}] بالكامل لفريق [${teamName}] (${newGeneratedSessions.length} وحدة تدريبية تلقائية)`
     );
+
+    this.persistCoachesAndSchedules();
 
     return {
       success: true,
@@ -3148,6 +2941,10 @@ export class MasterDatabaseService {
       sessionId,
       auditDetail
     );
+
+    // Persist changes to disk
+    this.persistAttendance();
+    this.persistCoachesAndSchedules();
 
     return {
       success: true,
