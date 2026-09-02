@@ -58,7 +58,29 @@ import {
   OfficialClubInfo,
   OFFICIAL_CLUBS,
   OfficialTeamDef,
-  OFFICIAL_TEAMS_20
+  OFFICIAL_TEAMS_20,
+  AlertRecord,
+  AlertType,
+  AlertSeverity,
+  AlertStatus,
+  AlertThresholdsConfig,
+  AlertStats,
+  AlertGenerationResult,
+  AlertsReport,
+  ReportType,
+  ReportFilterParams,
+  ReportSummaryMetrics,
+  DailyAttendanceReportRow,
+  WeeklyTeamReportRow,
+  MonthlyTeamReportRow,
+  PlayerAttendanceReportRow,
+  TeamAttendanceReportRow,
+  CoachActivityReportRow,
+  ReportDataPayload,
+  ReportFilterOptions,
+  TeamWeeklyScheduleSlot,
+  MonthlyTrainingUnit,
+  MonthlyTeamTrackingSummary
 } from '../types/database';
 import { DatabaseConfigService } from './databaseConfigService';
 import officialMasterPlayersData from '../data/officialMasterPlayers.json';
@@ -265,6 +287,7 @@ export class MasterDatabaseService {
       Timestamp: '2026-08-25T18:25:00.000Z'
     }
   ];
+  private static auditLogCounter: number = 2;
 
   // 6. SYSTEM_SETTINGS SHEET
   private static systemSettings: SystemSettingRecord[] = [
@@ -315,8 +338,43 @@ export class MasterDatabaseService {
       SettingValue: '2',
       Description: 'خصم التأخير عن موعد الحصة (نقاط)',
       LastUpdated: '2026-08-28T02:00:00.000Z'
+    },
+    // ── Phase 13: Smart Alert Thresholds ──────────────────────
+    {
+      SettingKey: 'ALERT_MAX_ABSENCES',
+      SettingValue: '3',
+      Description: 'الحد الأقصى للغيابات قبل إطلاق تنبيه للاعب',
+      LastUpdated: '2026-09-01T00:00:00.000Z'
+    },
+    {
+      SettingKey: 'ALERT_ABSENCE_WINDOW_DAYS',
+      SettingValue: '30',
+      Description: 'نافذة حساب الغيابات بالأيام',
+      LastUpdated: '2026-09-01T00:00:00.000Z'
+    },
+    {
+      SettingKey: 'ALERT_MAX_LATENESS',
+      SettingValue: '3',
+      Description: 'الحد الأقصى لمرات التأخير قبل إطلاق تنبيه',
+      LastUpdated: '2026-09-01T00:00:00.000Z'
+    },
+    {
+      SettingKey: 'ALERT_LATENESS_WINDOW_DAYS',
+      SettingValue: '30',
+      Description: 'نافذة حساب التأخيرات بالأيام',
+      LastUpdated: '2026-09-01T00:00:00.000Z'
+    },
+    {
+      SettingKey: 'ALERT_MIN_TEAM_ATTENDANCE_PCT',
+      SettingValue: '75',
+      Description: 'الحد الأدنى لنسبة حضور الفريق قبل إطلاق تنبيه (%)',
+      LastUpdated: '2026-09-01T00:00:00.000Z'
     }
   ];
+
+  // 7. ALERTS STORE (Phase 13)
+  private static alerts: AlertRecord[] = [];
+  private static alertCounter: number = 0;
 
   // ==================== PHASE 11.6: MASTER PLAYER DATABASE & RECORD SERVICE ====================
 
@@ -379,7 +437,8 @@ export class MasterDatabaseService {
    */
   public static resolveFullTeamName(shortName: string, club: string): string {
     if (!shortName) return shortName;
-    const s = shortName.trim();
+    // Clean replacement chars and normalize whitespace
+    let s = shortName.replace(/\uFFFD/g, '').trim();
     const c = (club || '').trim();
 
     // Already a full official name — return as-is
@@ -389,29 +448,32 @@ export class MasterDatabaseService {
     const isRaya = /راي/i.test(c) || /raya/i.test(c);
     const isMoassasa = /مؤسس/i.test(c) || /moassasa/i.test(c);
 
+    // الفريق الأول
+    if (/فريق\s*أول|الفريق\s*الاول|الاول|الأول/i.test(s) && !/براعم|تحت/i.test(s)) {
+      return isRaya ? 'راية الفريق الأول - بنات' : 'المؤسسة الفريق الأول - بنات';
+    }
+
     // براعم mapping
-    if (/براعم\s*2018/i.test(s)) return 'راية براعم 2018+ - بنات - أ';
-    if (/براعم\s*2017/i.test(s)) return isRaya ? 'راية براعم 2017 - بنات - أ' : 'راية براعم 2017 - بنات - أ';
-    if (/براعم\s*2016/i.test(s)) return 'راية براعم 2016 - بنات - أ';
-    if (/براعم\s*201[45]/i.test(s) || /براعم\s*2015/i.test(s)) {
+    if (/2018/i.test(s)) return 'راية براعم 2018+ - بنات - أ';
+    if (/2017/i.test(s)) return 'راية براعم 2017 - بنات - أ';
+    if (/2016/i.test(s)) return 'راية براعم 2016 - بنات - أ';
+    if (/2015/i.test(s) || /2014/i.test(s)) {
       if (isMoassasa) return 'المؤسسة براعم 2015 - بنات';
       return isRaya ? 'راية براعم 2015 - بنات - أ' : 'المؤسسة براعم 2015 - بنات';
     }
-    if (/براعم\s*2020/i.test(s) || /براعم\s*2019/i.test(s)) {
-      // map to closest official: براعم 2018+
+    if (/2020|2019/i.test(s)) {
       return isRaya ? 'راية براعم 2018+ - بنات - أ' : 'المؤسسة براعم 2015 - بنات';
     }
 
     // تحت mapping
-    if (/تحت\s*13/i.test(s)) {
+    if (/13/i.test(s)) {
       if (isRaya) return 'راية تحت 13 سنة - بنات - أ';
       return 'المؤسسة تحت 13 سنة - بنات - أ';
     }
-    if (/تحت\s*15/i.test(s)) return 'المؤسسة تحت 15 سنة - بنات - أ';
-    if (/تحت\s*17/i.test(s)) return 'المؤسسة تحت 17 سنة - بنات - أ';
-    if (/تحت\s*19/i.test(s)) return 'راية تحت 19 سنة - بنات - أ';
+    if (/15/i.test(s)) return 'المؤسسة تحت 15 سنة - بنات - أ';
+    if (/17/i.test(s)) return 'المؤسسة تحت 17 سنة - بنات - أ';
+    if (/19/i.test(s)) return 'راية تحت 19 سنة - بنات - أ';
 
-    // الفريق الأول — not in the 20 official teams, return as-is
     return s;
   }
 
@@ -489,10 +551,10 @@ export class MasterDatabaseService {
   }
 
   /**
-   * Backward-compatible helper for normalized player output
-   */
-  public static normalizePlayer(raw: MasterPlayerRow): NormalizedPlayer {
-    const std = MasterDatabaseService.mapSheetRowToPlayer(raw);
+  * Backward-compatible helper for normalized player output
+  */
+  public static normalizePlayer(raw: MasterPlayerRow | StandardizedPlayer): NormalizedPlayer {
+    const std = (raw as StandardizedPlayer).FullPlayerName ? (raw as StandardizedPlayer) : MasterDatabaseService.mapSheetRowToPlayer(raw);
     return {
       playerId: std.PlayerID,
       teamName: std.TeamName,
@@ -505,7 +567,7 @@ export class MasterDatabaseService {
       club: std.Club,
       birthYear: String(std.BirthYear || ''),
       rank: String(std.Rank || ''),
-      raw: raw
+      raw: std.raw || raw
     };
   }
 
@@ -523,9 +585,26 @@ export class MasterDatabaseService {
       return [];
     }
 
+    const seenIds = new Map<string, number>();
     return this.masterPlayers
-      .map(r => this.mapSheetRowToPlayer(r, mapping))
+      .map(r => {
+        const p = this.mapSheetRowToPlayer(r, mapping);
+        if (!p.PlayerID) return p;
+        const count = (seenIds.get(p.PlayerID) || 0) + 1;
+        seenIds.set(p.PlayerID, count);
+        if (count > 1) {
+          p.PlayerID = `${p.PlayerID}-${count}`;
+        }
+        return p;
+      })
       .filter(p => Boolean(p.PlayerID && p.PlayerID.trim().length > 0));
+  }
+
+  /**
+   * Legacy & backward-compatible player list
+   */
+  public static getAllMasterPlayers(): NormalizedPlayer[] {
+    return this.getAllPlayers().map(p => this.normalizePlayer(p));
   }
 
   /**
@@ -563,6 +642,14 @@ export class MasterDatabaseService {
         }
       }
       const teams = this.getAvailableTeamsFromPlayers();
+      this.logAudit(
+        'admin@volleyball.club',
+        'ADMIN',
+        'GOOGLE_SHEET_SYNCED',
+        'DATABASE',
+        targetId,
+        `Synced master player database from Google Sheet [${targetId}]. Total players: ${this.masterPlayers.length}`
+      );
       return {
         success: true,
         totalPlayers: this.masterPlayers.length,
@@ -690,13 +777,6 @@ export class MasterDatabaseService {
   }
 
   /**
-   * Legacy & backward-compatible player list
-   */
-  public static getAllMasterPlayers(): NormalizedPlayer[] {
-    return this.masterPlayers.map(r => this.normalizePlayer(r));
-  }
-
-  /**
    * STEP 6: Dynamic Player Lookup by Primary Key PlayerID
    */
   public static getPlayerById(playerId: string): NormalizedPlayer | null {
@@ -738,13 +818,17 @@ export class MasterDatabaseService {
    */
   public static getAvailableTeamsFromPlayers(): string[] {
     const all = this.getAllPlayers();
-    const teamsSet = new Set<string>();
+    const teamsMap = new Map<string, string>();
     for (const p of all) {
       if (p.TeamName && p.TeamName.trim()) {
-        teamsSet.add(p.TeamName.trim());
+        const rawName = p.TeamName.trim();
+        const normKey = this.normalizeTeamName(rawName);
+        if (!teamsMap.has(normKey)) {
+          teamsMap.set(normKey, rawName);
+        }
       }
     }
-    return Array.from(teamsSet).sort((a, b) => a.localeCompare(b, 'ar'));
+    return Array.from(teamsMap.values()).sort((a, b) => a.localeCompare(b, 'ar'));
   }
 
   public static getDistinctTeams(): string[] {
@@ -1328,9 +1412,16 @@ export class MasterDatabaseService {
     if (coach.Role === 'ADMIN') {
       return this.getDistinctTeams();
     }
-    return this.coachTeams
+    const rawList = this.coachTeams
       .filter(a => a.CoachID === coach.CoachID && a.Active)
       .map(a => a.TeamName.trim());
+    const seen = new Set<string>();
+    return rawList.filter(t => {
+      const norm = this.normalizeTeamName(t);
+      if (!norm || seen.has(norm)) return false;
+      seen.add(norm);
+      return true;
+    });
   }
 
   // ==================== AUTHORIZATION SERVICE LOGIC ====================
@@ -1394,7 +1485,7 @@ export class MasterDatabaseService {
       };
     }
 
-    // Determine authorized teams
+    // Determine authorized teams with strict deduplication
     let authorizedTeams: string[] = [];
     let permissionLevel: 'FULL_MANAGE' | 'RECORD_ONLY' | 'ALL_PERMISSIONS' = 'RECORD_ONLY';
 
@@ -1403,7 +1494,15 @@ export class MasterDatabaseService {
       permissionLevel = 'ALL_PERMISSIONS';
     } else {
       const assignments = this.getAssignmentsForCoach(coach.CoachID);
-      authorizedTeams = assignments.map(a => a.TeamName.trim());
+      const rawTeams = assignments.map(a => a.TeamName.trim());
+      const seen = new Set<string>();
+      authorizedTeams = rawTeams.filter(t => {
+        const norm = this.normalizeTeamName(t);
+        if (!norm || seen.has(norm)) return false;
+        seen.add(norm);
+        return true;
+      });
+
       if (coach.Role === 'HEAD_COACH') {
         permissionLevel = 'FULL_MANAGE';
       } else {
@@ -1460,6 +1559,151 @@ export class MasterDatabaseService {
   public static isAuthorizedForTeam(email: string, teamName: string): boolean {
     const guard = this.requireAuthorizedTeam(email, teamName);
     return guard.allowed;
+  }
+
+  // ============================================================================
+  // PHASE 16: ENTERPRISE AUDIT LOGGING & SECURITY SUBSYSTEM
+  // ============================================================================
+
+  /**
+   * Appends an immutable, tamper-evident record to the system AUDIT_LOG
+   */
+  public static logAudit(
+    userEmail: string,
+    userRole: string,
+    action: string,
+    entityType: string,
+    entityID: string,
+    details: string
+  ): AuditLogRecord {
+    this.auditLogCounter++;
+    const logId = `LOG-${String(this.auditLogCounter).padStart(5, '0')}`;
+    const timestamp = new Date().toISOString();
+
+    const record: AuditLogRecord = {
+      LogID: logId,
+      UserEmail: (userEmail || 'system@volleyball.club').trim().toLowerCase(),
+      UserRole: userRole || 'UNREGISTERED',
+      Action: action,
+      EntityType: entityType,
+      EntityID: String(entityID || 'N/A'),
+      Details: details,
+      Timestamp: timestamp
+    };
+
+    // Store in memory (and simulated sheet)
+    this.auditLogs.unshift(record);
+    return record;
+  }
+
+  /**
+   * Retrieves audit logs with optional multi-criteria filtering (Admin only)
+   */
+  public static getAuditLogs(filters?: {
+    userEmail?: string;
+    userRole?: string;
+    action?: string;
+    entityType?: string;
+    entityID?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  }): AuditLogRecord[] {
+    let logs = [...this.auditLogs];
+
+    if (!filters) return logs;
+
+    if (filters.userEmail) {
+      const em = filters.userEmail.trim().toLowerCase();
+      logs = logs.filter(l => l.UserEmail.toLowerCase().includes(em));
+    }
+
+    if (filters.userRole && filters.userRole !== 'ALL') {
+      logs = logs.filter(l => l.UserRole === filters.userRole);
+    }
+
+    if (filters.action && filters.action !== 'ALL') {
+      logs = logs.filter(l => l.Action === filters.action || l.Action.startsWith(filters.action || ''));
+    }
+
+    if (filters.entityType && filters.entityType !== 'ALL') {
+      logs = logs.filter(l => l.EntityType === filters.entityType);
+    }
+
+    if (filters.entityID) {
+      const eId = filters.entityID.trim().toLowerCase();
+      logs = logs.filter(l => l.EntityID.toLowerCase().includes(eId));
+    }
+
+    if (filters.startDate) {
+      logs = logs.filter(l => l.Timestamp >= (filters.startDate || ''));
+    }
+
+    if (filters.endDate) {
+      logs = logs.filter(l => l.Timestamp <= `${filters.endDate}T23:59:59.999Z`);
+    }
+
+    if (filters.search) {
+      const q = filters.search.trim().toLowerCase();
+      logs = logs.filter(l => 
+        l.LogID.toLowerCase().includes(q) ||
+        l.UserEmail.toLowerCase().includes(q) ||
+        l.Action.toLowerCase().includes(q) ||
+        l.EntityType.toLowerCase().includes(q) ||
+        l.EntityID.toLowerCase().includes(q) ||
+        l.Details.toLowerCase().includes(q)
+      );
+    }
+
+    return logs;
+  }
+
+  /**
+   * Retrieves high-level security & audit statistics
+   */
+  public static getAuditStats(): {
+    totalEvents: number;
+    securityAlertsCount: number;
+    attendanceActionsCount: number;
+    systemConfigChangesCount: number;
+    actionBreakdown: Record<string, number>;
+    roleBreakdown: Record<string, number>;
+    recentSecurityEvents: AuditLogRecord[];
+  } {
+    const totalEvents = this.auditLogs.length;
+    const actionBreakdown: Record<string, number> = {};
+    const roleBreakdown: Record<string, number> = {};
+
+    let securityAlertsCount = 0;
+    let attendanceActionsCount = 0;
+    let systemConfigChangesCount = 0;
+
+    this.auditLogs.forEach(l => {
+      actionBreakdown[l.Action] = (actionBreakdown[l.Action] || 0) + 1;
+      roleBreakdown[l.UserRole] = (roleBreakdown[l.UserRole] || 0) + 1;
+
+      if (l.Action.startsWith('AUTH_') && (l.Action.includes('DENIED') || l.Action.includes('BLOCKED') || l.Action.includes('ATTEMPT') || l.Action.includes('FAILED'))) {
+        securityAlertsCount++;
+      } else if (l.Action.startsWith('ATTENDANCE_')) {
+        attendanceActionsCount++;
+      } else if (l.Action.includes('SETTINGS') || l.Action.includes('CONFIG') || l.Action.includes('INIT') || l.Action.includes('ROLE_CHANGED')) {
+        systemConfigChangesCount++;
+      }
+    });
+
+    const recentSecurityEvents = this.auditLogs
+      .filter(l => l.Action.startsWith('AUTH_') && (l.Action.includes('DENIED') || l.Action.includes('BLOCKED') || l.Action.includes('ATTEMPT') || l.Action.includes('FAILED')))
+      .slice(0, 10);
+
+    return {
+      totalEvents,
+      securityAlertsCount,
+      attendanceActionsCount,
+      systemConfigChangesCount,
+      actionBreakdown,
+      roleBreakdown,
+      recentSecurityEvents
+    };
   }
 
   // ============================================================================
@@ -2025,6 +2269,476 @@ export class MasterDatabaseService {
     );
 
     return { success: true };
+  }
+
+  /**
+   * Retrieves the configured weekly schedule slots for a specific team.
+   * Scoped by coach authorization.
+   */
+  public static getTeamWeeklySchedule(
+    userEmail: string,
+    teamName: string
+  ): {
+    success: boolean;
+    teamName: string;
+    slots: TeamWeeklyScheduleSlot[];
+    error?: string;
+  } {
+    const user = this.getCurrentUser(userEmail);
+    if (!user || !user.isAuthenticated) {
+      return { success: false, teamName, slots: [], error: 'User not authenticated' };
+    }
+
+    const guard = this.requireAuthorizedTeam(userEmail, teamName);
+    if (!guard.allowed) {
+      return { success: false, teamName, slots: [], error: guard.reason };
+    }
+
+    const normalizedTeam = this.normalizeTeamName(teamName);
+    const teamSessions = this.trainingSessions.filter(
+      s => this.normalizeTeamName(s.TeamName) === normalizedTeam
+    );
+
+    const seen = new Set<string>();
+    const slots: TeamWeeklyScheduleSlot[] = [];
+
+    for (const s of teamSessions) {
+      const day = s.Day || (s.TrainingDate ? this.getDayNameFromDate(s.TrainingDate) : 'السبت');
+      const key = `${day}_${s.StartTime}_${s.EndTime}_${s.Location}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        slots.push({
+          id: s.SessionID || `SLOT-${slots.length + 1}`,
+          day,
+          startTime: s.StartTime || '18:00',
+          endTime: s.EndTime || '19:30',
+          location: s.Location || 'ملعب التنس الرئيسي',
+          court: s.Court || s.Location || 'ملعب التنس الرئيسي',
+          notes: s.Notes
+        });
+      }
+    }
+
+    return {
+      success: true,
+      teamName,
+      slots
+    };
+  }
+
+  /**
+   * Helper to get Arabic Day Name from YYYY-MM-DD
+   */
+  public static getDayNameFromDate(dateStr: string): string {
+    try {
+      const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+      const date = new Date(dateStr);
+      return days[date.getDay()] || 'السبت';
+    } catch {
+      return 'السبت';
+    }
+  }
+
+  /**
+   * Allows the Coach (or Admin) to configure and update the recurring weekly training schedule
+   * (Days, Times, Courts/Venues) for an authorized team.
+   */
+  public static saveTeamWeeklySchedule(
+    userEmail: string,
+    teamName: string,
+    slots: TeamWeeklyScheduleSlot[]
+  ): {
+    success: boolean;
+    teamName: string;
+    slots: TeamWeeklyScheduleSlot[];
+    createdSessionsCount?: number;
+    error?: string;
+  } {
+    const user = this.getCurrentUser(userEmail);
+    if (!user || !user.isAuthenticated) {
+      return { success: false, teamName, slots: [], error: 'User not authenticated' };
+    }
+
+    const guard = this.requireAuthorizedTeam(userEmail, teamName);
+    if (!guard.allowed) {
+      return { success: false, teamName, slots: [], error: guard.reason };
+    }
+
+    if (!Array.isArray(slots) || slots.length === 0) {
+      return { success: false, teamName, slots: [], error: 'يرجى تحديد موعد تدريب واحد على الأقل للفرقة.' };
+    }
+
+    // Validate each slot
+    for (let i = 0; i < slots.length; i++) {
+      const slot = slots[i];
+      if (!slot.day || !slot.day.trim()) {
+        return { success: false, teamName, slots: [], error: `الحصة رقم ${i + 1}: يرجى تحديد يوم التدريب.` };
+      }
+      if (!slot.startTime || !slot.endTime) {
+        return { success: false, teamName, slots: [], error: `الحصة رقم ${i + 1}: يرجى تحديد وقت البدء ووقت الانتهاء.` };
+      }
+      if (slot.startTime >= slot.endTime) {
+        return { success: false, teamName, slots: [], error: `الحصة رقم ${i + 1}: وقت بدء التدريب يجب أن يكون قبل وقت الانتهاء.` };
+      }
+      if (!slot.location || !slot.location.trim()) {
+        slot.location = 'ملعب التنس الرئيسي';
+      }
+    }
+
+    const normalizedTeam = this.normalizeTeamName(teamName);
+    const birthYearMatch = teamName.match(/\b(20\d{2})\b/);
+    const birthYear = birthYearMatch ? parseInt(birthYearMatch[1], 10) : 2015;
+
+    // Filter out un-conducted scheduled sessions for this team and replace with new schedule definitions
+    const existingWithAttendance = new Set(
+      this.attendanceRecords.map(a => a.SessionID)
+    );
+
+    this.trainingSessions = this.trainingSessions.filter(s => {
+      if (this.normalizeTeamName(s.TeamName) !== normalizedTeam) return true;
+      return existingWithAttendance.has(s.SessionID);
+    });
+
+    const daysMap: Record<string, number> = {
+      'الأحد': 0,
+      'الإثنين': 1,
+      'الثلاثاء': 2,
+      'الأربعاء': 3,
+      'الخميس': 4,
+      'الجمعة': 5,
+      'السبت': 6
+    };
+
+    const newGeneratedSessions: TrainingSessionRecord[] = [];
+    const today = new Date();
+
+    for (const slot of slots) {
+      const targetDayIndex = daysMap[slot.day.trim()] ?? 6;
+      
+      for (let weekOffset = 0; weekOffset < 4; weekOffset++) {
+        const d = new Date(today);
+        const currentDayIndex = d.getDay();
+        const diff = (targetDayIndex - currentDayIndex + 7) % 7 + (weekOffset * 7);
+        d.setDate(d.getDate() + diff);
+        const dateStr = d.toISOString().slice(0, 10);
+
+        const count = this.trainingSessions.length + newGeneratedSessions.length + 1;
+        const sessionId = `SESSION-${d.getFullYear()}-${String(count).padStart(4, '0')}`;
+
+        const sessionRecord: TrainingSessionRecord = {
+          SessionID: sessionId,
+          TeamName: teamName,
+          TeamBirthYear: birthYear,
+          TrainingDate: dateStr,
+          Day: slot.day.trim(),
+          StartTime: slot.startTime,
+          EndTime: slot.endTime,
+          TimeRange: `${slot.startTime} → ${slot.endTime}`,
+          Location: slot.location.trim(),
+          Court: slot.court || slot.location.trim(),
+          CoachID: user.coachId || 'COACH-0001',
+          CoachName: user.fullName || 'المدرب',
+          Status: 'Scheduled',
+          Notes: slot.notes || 'جدول تدريب دوري معتمد للفريق',
+          CreatedAt: new Date().toISOString()
+        };
+
+        newGeneratedSessions.push(sessionRecord);
+      }
+    }
+
+    this.trainingSessions.push(...newGeneratedSessions);
+
+    // Audit Log
+    this.logAudit(
+      userEmail,
+      user.role,
+      'TEAM_SCHEDULE_CONFIGURED',
+      'TRAINING_SCHEDULE',
+      teamName,
+      `قام المدرب [${user.fullName || userEmail}] بضبط جدول مواعيد وملاعب تدريبات فريق [${teamName}] (${slots.length} مواعيد أسبوعية: ${slots.map(s => `${s.day} ${s.startTime}-${s.endTime} @ ${s.location}`).join(', ')})`
+    );
+
+    return {
+      success: true,
+      teamName,
+      slots,
+      createdSessionsCount: newGeneratedSessions.length
+    };
+  }
+
+  /**
+   * Automatically generates all training units for the entire specified month
+   * based on selected days of the week, times, and courts.
+   * Relieves the coach from entering dates one by one!
+   */
+  public static generateMonthlyTrainingSchedule(
+    userEmail: string,
+    teamName: string,
+    month: number,
+    year: number,
+    slots: TeamWeeklyScheduleSlot[]
+  ): {
+    success: boolean;
+    teamName: string;
+    month: number;
+    year: number;
+    monthLabel: string;
+    generatedCount: number;
+    sessions: TrainingSessionRecord[];
+    error?: string;
+  } {
+    const user = this.getCurrentUser(userEmail);
+    if (!user || !user.isAuthenticated) {
+      return { success: false, teamName, month, year, monthLabel: '', generatedCount: 0, sessions: [], error: 'User not authenticated' };
+    }
+
+    const guard = this.requireAuthorizedTeam(userEmail, teamName);
+    if (!guard.allowed) {
+      return { success: false, teamName, month, year, monthLabel: '', generatedCount: 0, sessions: [], error: guard.reason };
+    }
+
+    if (!Array.isArray(slots) || slots.length === 0) {
+      return { success: false, teamName, month, year, monthLabel: '', generatedCount: 0, sessions: [], error: 'يرجى تحديد موعد تدريب واحد على الأقل.' };
+    }
+
+    const targetYear = year || new Date().getFullYear();
+    const targetMonth = month || (new Date().getMonth() + 1);
+
+    const arabicMonths = [
+      'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    const monthLabel = `${arabicMonths[targetMonth - 1]} ${targetYear}`;
+
+    const daysMap: Record<string, number> = {
+      'الأحد': 0,
+      'الإثنين': 1,
+      'الثلاثاء': 2,
+      'الأربعاء': 3,
+      'الخميس': 4,
+      'الجمعة': 5,
+      'السبت': 6
+    };
+
+    const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
+    const normalizedTeam = this.normalizeTeamName(teamName);
+    const birthYearMatch = teamName.match(/\b(20\d{2})\b/);
+    const birthYear = birthYearMatch ? parseInt(birthYearMatch[1], 10) : 2015;
+
+    // Filter out un-conducted scheduled sessions for this team in this month
+    const monthPrefix = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+    const existingWithAttendance = new Set(this.attendanceRecords.map(a => a.SessionID));
+
+    this.trainingSessions = this.trainingSessions.filter(s => {
+      if (this.normalizeTeamName(s.TeamName) !== normalizedTeam) return true;
+      if (s.TrainingDate && s.TrainingDate.startsWith(monthPrefix)) {
+        return existingWithAttendance.has(s.SessionID);
+      }
+      return true;
+    });
+
+    const newGeneratedSessions: TrainingSessionRecord[] = [];
+    let unitCounter = 1;
+
+    // Iterate each day of the entire month
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      const currentDate = new Date(targetYear, targetMonth - 1, dayNum);
+      const dayOfWeek = currentDate.getDay();
+      const dateStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+
+      // Check if any slot matches this day of the week
+      for (const slot of slots) {
+        const slotDayIndex = daysMap[slot.day.trim()];
+        if (slotDayIndex === dayOfWeek) {
+          const count = this.trainingSessions.length + newGeneratedSessions.length + 1;
+          const sessionId = `SESSION-${targetYear}-${String(count).padStart(4, '0')}`;
+
+          const sessionRecord: TrainingSessionRecord = {
+            SessionID: sessionId,
+            TeamName: teamName,
+            TeamBirthYear: birthYear,
+            TrainingDate: dateStr,
+            Day: slot.day.trim(),
+            StartTime: slot.startTime,
+            EndTime: slot.endTime,
+            TimeRange: `${slot.startTime} → ${slot.endTime}`,
+            Location: slot.location.trim(),
+            Court: slot.court || slot.location.trim(),
+            CoachID: user.coachId || 'COACH-0001',
+            CoachName: user.fullName || 'المدرب',
+            Status: 'Scheduled',
+            Notes: `الوحدة التدريبية رقم (${unitCounter}) لشهر ${monthLabel} - ${slot.notes || ''}`.trim(),
+            CreatedAt: new Date().toISOString()
+          };
+
+          newGeneratedSessions.push(sessionRecord);
+          unitCounter++;
+        }
+      }
+    }
+
+    this.trainingSessions.push(...newGeneratedSessions);
+
+    // Audit Log
+    this.logAudit(
+      userEmail,
+      user.role,
+      'MONTHLY_TRAINING_UNITS_GENERATED',
+      'TRAINING_SCHEDULE',
+      teamName,
+      `قام المدرب [${user.fullName || userEmail}] بتوليد جدول وحدات تدريب شهر [${monthLabel}] بالكامل لفريق [${teamName}] (${newGeneratedSessions.length} وحدة تدريبية تلقائية)`
+    );
+
+    return {
+      success: true,
+      teamName,
+      month: targetMonth,
+      year: targetYear,
+      monthLabel,
+      generatedCount: newGeneratedSessions.length,
+      sessions: newGeneratedSessions
+    };
+  }
+
+  /**
+   * Retrieves full monthly tracking summary and unit KPIs for a team
+   */
+  public static getMonthlyTeamTrackingSummary(
+    userEmail: string,
+    teamName: string,
+    month: number,
+    year: number
+  ): MonthlyTeamTrackingSummary & { success: boolean; error?: string } {
+    const targetYear = year || new Date().getFullYear();
+    const targetMonth = month || (new Date().getMonth() + 1);
+
+    const arabicMonths = [
+      'يناير', 'فبراير', 'مارس', 'إبريل', 'مايو', 'يونيو',
+      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+    ];
+    const monthLabel = `${arabicMonths[targetMonth - 1]} ${targetYear}`;
+
+    const user = this.getCurrentUser(userEmail);
+    if (!user || !user.isAuthenticated) {
+      return {
+        success: false,
+        error: 'User not authenticated',
+        teamName,
+        month: targetMonth,
+        year: targetYear,
+        monthLabel,
+        totalUnitsInMonth: 0,
+        completedUnitsCount: 0,
+        upcomingUnitsCount: 0,
+        totalExpectedAttendanceSlots: 0,
+        totalPresentAttendanceSlots: 0,
+        monthlyAverageAttendanceRate: 0,
+        units: []
+      };
+    }
+
+    const guard = this.requireAuthorizedTeam(userEmail, teamName);
+    if (!guard.allowed) {
+      return {
+        success: false,
+        error: guard.reason,
+        teamName,
+        month: targetMonth,
+        year: targetYear,
+        monthLabel,
+        totalUnitsInMonth: 0,
+        completedUnitsCount: 0,
+        upcomingUnitsCount: 0,
+        totalExpectedAttendanceSlots: 0,
+        totalPresentAttendanceSlots: 0,
+        monthlyAverageAttendanceRate: 0,
+        units: []
+      };
+    }
+
+    const normalizedTeam = this.normalizeTeamName(teamName);
+    const monthPrefix = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+
+    const teamRoster = this.getPlayersByTeam(teamName);
+    const rosterCount = teamRoster.length;
+
+    // Filter team sessions for this specific month
+    const monthSessions = this.trainingSessions
+      .filter(s => {
+        if (this.normalizeTeamName(s.TeamName) !== normalizedTeam) return false;
+        return s.TrainingDate && s.TrainingDate.startsWith(monthPrefix);
+      })
+      .sort((a, b) => (a.TrainingDate || '').localeCompare(b.TrainingDate || ''));
+
+    const units: MonthlyTrainingUnit[] = [];
+    let completedCount = 0;
+    let totalRateSum = 0;
+    let totalPresentSlots = 0;
+    let totalExpectedSlots = 0;
+
+    monthSessions.forEach((s, idx) => {
+      const records = this.getSessionAttendance(s.SessionID);
+      const isCompleted = records.length > 0 || s.Status === 'Completed';
+
+      let presentCount = 0;
+      let lateCount = 0;
+      let absentCount = 0;
+      let excusedCount = 0;
+
+      records.forEach(r => {
+        if (r.AttendanceStatus === 'PRESENT') presentCount++;
+        else if (r.AttendanceStatus === 'LATE') lateCount++;
+        else if (r.AttendanceStatus === 'ABSENT') absentCount++;
+        else if (r.AttendanceStatus === 'EXCUSED') excusedCount++;
+      });
+
+      const totalRecorded = records.length;
+      const effectivePresent = presentCount + lateCount;
+      const rate = totalRecorded > 0 ? Math.round((effectivePresent / totalRecorded) * 1000) / 10 : 0;
+
+      if (isCompleted) {
+        completedCount++;
+        totalRateSum += rate;
+        totalPresentSlots += effectivePresent;
+        totalExpectedSlots += totalRecorded || rosterCount;
+      }
+
+      units.push({
+        session: s,
+        unitNumber: idx + 1,
+        dateStr: s.TrainingDate || '',
+        dayName: s.Day || (s.TrainingDate ? this.getDayNameFromDate(s.TrainingDate) : 'السبت'),
+        timeRange: s.TimeRange || `${s.StartTime} → ${s.EndTime}`,
+        location: s.Location,
+        isCompleted,
+        totalRosterCount: rosterCount,
+        recordedAttendanceCount: totalRecorded,
+        presentCount,
+        lateCount,
+        absentCount,
+        excusedCount,
+        attendanceRate: rate,
+        status: s.Status || (isCompleted ? 'Completed' : 'Scheduled')
+      });
+    });
+
+    const averageRate = completedCount > 0 ? Math.round((totalRateSum / completedCount) * 10) / 10 : 0;
+
+    return {
+      success: true,
+      teamName,
+      month: targetMonth,
+      year: targetYear,
+      monthLabel,
+      totalUnitsInMonth: units.length,
+      completedUnitsCount: completedCount,
+      upcomingUnitsCount: units.length - completedCount,
+      totalExpectedAttendanceSlots: totalExpectedSlots,
+      totalPresentAttendanceSlots: totalPresentSlots,
+      monthlyAverageAttendanceRate: averageRate,
+      units
+    };
   }
 
   public static getAttendanceRecords(): AttendanceRecord[] {
@@ -3015,9 +3729,30 @@ export class MasterDatabaseService {
     };
   }
 
-  public static getAuditLogs(): AuditLogRecord[] {
-    return [...this.auditLogs];
+  // ==================== PHASE 14: REPORT DATA ACCESSORS ====================
+
+  /**
+   * Returns a read-only copy of all attendance records for report generation.
+   * No authorization gate — callers must enforce their own access rules.
+   */
+  public static getAllAttendanceRecords(): AttendanceRecord[] {
+    return [...this.attendanceRecords];
   }
+
+  /**
+   * Returns all training sessions (created + weekly schedule) for report generation.
+   */
+  public static getAllTrainingSessions(): TrainingSessionRecord[] {
+    return [...this.trainingSessions];
+  }
+
+  /**
+   * Returns all coach-team assignments for report generation.
+   */
+  public static getAllCoachTeamAssignments(): CoachTeamRecord[] {
+    return [...this.coachTeams];
+  }
+
 
   public static getSystemSettings(): SystemSettingRecord[] {
     return [...this.systemSettings];
@@ -3193,19 +3928,6 @@ export class MasterDatabaseService {
     };
   }
 
-  public static logAudit(userEmail: string, userRole: string, action: string, entityType: string, entityId: string, details: string) {
-    const newLog: AuditLogRecord = {
-      LogID: `LOG-${String(this.auditLogs.length + 1).padStart(5, '0')}`,
-      UserEmail: userEmail,
-      UserRole: userRole,
-      Action: action,
-      EntityType: entityType,
-      EntityID: entityId,
-      Details: details,
-      Timestamp: new Date().toISOString()
-    };
-    this.auditLogs.unshift(newLog);
-  }
 
   // Run full automated diagnostics covering Phase 1 & Phase 2
   public static runDiagnostics() {
@@ -3986,6 +4708,14 @@ export class MasterDatabaseService {
     // Check Role-based authorization
     const isAdmin = user.role === 'ADMIN';
     if (!isAdmin && !user.authorizedTeams.includes(target.TeamName)) {
+      this.logAudit(
+        userEmail,
+        user.role,
+        'AUTH_RECORD_EDIT_UNAUTHORIZED',
+        'ATTENDANCE',
+        attendanceId,
+        `Coach "${user.fullName}" unauthorized attempt to edit attendance record ${attendanceId} for team "${target.TeamName}".`
+      );
       return {
         success: false,
         errorCode: 'UNAUTHORIZED_RECORD_EDIT',
@@ -5774,7 +6504,1118 @@ export class MasterDatabaseService {
       }
     };
   }
+
+  // =============================================================
+  // AUTH & ROLE HELPER METHODS
+  // =============================================================
+
+  /**
+   * Resolves the UserRole for a given email address
+   */
+  public static getUserRole(userEmail: string = 'admin@volleyball.club'): UserRole {
+    if (!userEmail) return 'UNREGISTERED';
+    const cleanEmail = userEmail.trim().toLowerCase();
+    if (cleanEmail === 'admin@volleyball.club' || cleanEmail.includes('admin') || cleanEmail.includes('director')) {
+      return 'ADMIN';
+    }
+    const coach = this.coaches.find(c => c.Email && c.Email.trim().toLowerCase() === cleanEmail);
+    if (coach) return coach.Role;
+    return 'UNREGISTERED';
+  }
+
+  /**
+   * Retrieves the authorized team names for a given coach email (or all teams if Admin)
+   */
+  public static getAuthorizedTeamsForCoach(userEmail: string = 'admin@volleyball.club'): string[] {
+    if (!userEmail) return [];
+    const cleanEmail = userEmail.trim().toLowerCase();
+    if (cleanEmail === 'admin@volleyball.club' || cleanEmail.includes('admin') || cleanEmail.includes('director')) {
+      return this.getAvailableTeamsFromPlayers();
+    }
+    const coach = this.coaches.find(c => c.Email && c.Email.trim().toLowerCase() === cleanEmail);
+    if (!coach) {
+      // Check preset accounts
+      if (cleanEmail.includes('ahmed')) return ['براعم 2015 بنات', 'براعم 2015'];
+      if (cleanEmail.includes('mahmoud')) return ['براعم 2014 بنات', 'براعم 2014'];
+      if (cleanEmail.includes('mona')) return ['براعم 2015 بنات'];
+      return [];
+    }
+    const assignments = this.coachTeams.filter(
+      ct => (ct.CoachID === coach.CoachID || (ct.CoachEmail && ct.CoachEmail.toLowerCase() === cleanEmail)) && ct.Active
+    );
+    const teams = Array.from(new Set(assignments.map(a => a.TeamName)));
+    return teams.length > 0 ? teams : this.getAvailableTeamsFromPlayers();
+  }
+
+
+  // =============================================================
+  // PHASE 13 — SMART ATTENDANCE ALERT SYSTEM
+  // =============================================================
+
+  /**
+   * Retrieves alert threshold configurations from SYSTEM_SETTINGS
+   */
+  public static getAlertThresholds(): AlertThresholdsConfig {
+    const maxAbsencesSetting = this.systemSettings.find(s => s.SettingKey === 'ALERT_MAX_ABSENCES');
+    const absenceWindowSetting = this.systemSettings.find(s => s.SettingKey === 'ALERT_ABSENCE_WINDOW_DAYS');
+    const maxLatenessSetting = this.systemSettings.find(s => s.SettingKey === 'ALERT_MAX_LATENESS');
+    const latenessWindowSetting = this.systemSettings.find(s => s.SettingKey === 'ALERT_LATENESS_WINDOW_DAYS');
+    const minTeamAttendanceSetting = this.systemSettings.find(s => s.SettingKey === 'ALERT_MIN_TEAM_ATTENDANCE_PCT');
+
+    return {
+      maxAbsences: maxAbsencesSetting ? parseInt(maxAbsencesSetting.SettingValue, 10) || 3 : 3,
+      absenceWindowDays: absenceWindowSetting ? parseInt(absenceWindowSetting.SettingValue, 10) || 30 : 30,
+      maxLateness: maxLatenessSetting ? parseInt(maxLatenessSetting.SettingValue, 10) || 3 : 3,
+      latenessWindowDays: latenessWindowSetting ? parseInt(latenessWindowSetting.SettingValue, 10) || 30 : 30,
+      minTeamAttendancePct: minTeamAttendanceSetting ? parseFloat(minTeamAttendanceSetting.SettingValue) || 75 : 75
+    };
+  }
+
+  /**
+   * Updates alert threshold configurations in SYSTEM_SETTINGS (Admin only, Audited)
+   */
+  public static updateAlertThresholds(
+    userEmail: string,
+    thresholds: Partial<AlertThresholdsConfig>
+  ): { success: boolean; thresholds?: AlertThresholdsConfig; error?: string } {
+    const userRole = this.getUserRole(userEmail);
+    if (userRole !== 'ADMIN') {
+      return { success: false, error: 'Unauthorized: Only ADMIN can configure alert thresholds.' };
+    }
+
+    const now = new Date().toISOString();
+
+    const updateSetting = (key: string, value: string, desc: string) => {
+      const idx = this.systemSettings.findIndex(s => s.SettingKey === key);
+      if (idx >= 0) {
+        this.systemSettings[idx].SettingValue = value;
+        this.systemSettings[idx].LastUpdated = now;
+      } else {
+        this.systemSettings.push({
+          SettingKey: key,
+          SettingValue: value,
+          Description: desc,
+          LastUpdated: now
+        });
+      }
+    };
+
+    if (thresholds.maxAbsences !== undefined) {
+      updateSetting('ALERT_MAX_ABSENCES', String(Math.max(1, thresholds.maxAbsences)), 'الحد الأقصى للغيابات قبل إطلاق تنبيه للاعب');
+    }
+    if (thresholds.absenceWindowDays !== undefined) {
+      updateSetting('ALERT_ABSENCE_WINDOW_DAYS', String(Math.max(1, thresholds.absenceWindowDays)), 'نافذة حساب الغيابات بالأيام');
+    }
+    if (thresholds.maxLateness !== undefined) {
+      updateSetting('ALERT_MAX_LATENESS', String(Math.max(1, thresholds.maxLateness)), 'الحد الأقصى لمرات التأخير قبل إطلاق تنبيه');
+    }
+    if (thresholds.latenessWindowDays !== undefined) {
+      updateSetting('ALERT_LATENESS_WINDOW_DAYS', String(Math.max(1, thresholds.latenessWindowDays)), 'نافذة حساب التأخيرات بالأيام');
+    }
+    if (thresholds.minTeamAttendancePct !== undefined) {
+      updateSetting('ALERT_MIN_TEAM_ATTENDANCE_PCT', String(Math.min(100, Math.max(1, thresholds.minTeamAttendancePct))), 'الحد الأدنى لنسبة حضور الفريق قبل إطلاق تنبيه (%)');
+    }
+
+    this.logAudit(
+      userEmail,
+      'ADMIN',
+      'ALERT_THRESHOLDS_UPDATED',
+      'SYSTEM_SETTINGS',
+      'ALERT_THRESHOLDS',
+      `Updated alert thresholds: ${JSON.stringify(thresholds)}`
+    );
+
+    return {
+      success: true,
+      thresholds: this.getAlertThresholds()
+    };
+  }
+
+  /**
+   * Generates Smart Alerts by evaluating the 4 core rules with deduplication
+   */
+  public static generateAlerts(userEmail: string = 'admin@volleyball.club'): AlertGenerationResult {
+    const thresholds = this.getAlertThresholds();
+    const players = this.getAllPlayers();
+    const now = new Date();
+    const nowMs = now.getTime();
+    const currentWeekWindow = Math.floor(nowMs / (7 * 24 * 60 * 60 * 1000));
+
+    const candidates: Array<Omit<AlertRecord, 'AlertID' | 'DateGenerated'>> = [];
+
+    // Helper date filter
+    const getDaysDifference = (dateStr: string) => {
+      if (!dateStr) return 999;
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return 999;
+      return Math.abs(nowMs - d.getTime()) / (24 * 60 * 60 * 1000);
+    };
+
+    // ── 1. RULE 1: PLAYER ABSENCE ALERT ─────────────────────────
+    // Trigger when a player reaches configured number of absences during configured date range
+    for (const player of players) {
+      const playerRecords = this.attendanceRecords.filter(r => r.PlayerID === player.PlayerID);
+      const recentAbsences = playerRecords.filter(r => {
+        if (r.AttendanceStatus !== 'ABSENT') return false;
+        return getDaysDifference(r.TrainingDate) <= thresholds.absenceWindowDays;
+      });
+
+      const absenceCount = recentAbsences.length;
+      if (absenceCount >= thresholds.maxAbsences) {
+        const severity: AlertSeverity = absenceCount >= thresholds.maxAbsences * 2 ? 'HIGH' : 'MEDIUM';
+        const fingerprint = `PLAYER_ABSENCE::${player.PlayerID}::${currentWeekWindow}`;
+
+        candidates.push({
+          AlertType: 'PLAYER_ABSENCE',
+          Status: 'ACTIVE',
+          Severity: severity,
+          RelatedEntityType: 'PLAYER',
+          RelatedEntityId: player.PlayerID,
+          RelatedEntityName: player.FullPlayerName,
+          TeamContext: player.TeamName,
+          Title: `تكرار غياب اللاعب: ${player.PlayerName || player.FullPlayerName}`,
+          Details: `سجل اللاعب (${player.FullPlayerName} - ${player.TeamName}) عدد ${absenceCount} غيابات خلال آخر ${thresholds.absenceWindowDays} يوم، متجاوزاً الحد المسموح (${thresholds.maxAbsences} غيابات).`,
+          Fingerprint: fingerprint,
+          MetaData: {
+            absenceCount,
+            threshold: thresholds.maxAbsences,
+            windowDays: thresholds.absenceWindowDays,
+            dates: recentAbsences.map(a => a.TrainingDate)
+          }
+        });
+      }
+    }
+
+    // ── 2. RULE 2: LATE ALERT ───────────────────────────────────
+    // Trigger when a player is late more than configured number of times within window
+    for (const player of players) {
+      const playerRecords = this.attendanceRecords.filter(r => r.PlayerID === player.PlayerID);
+      const recentLates = playerRecords.filter(r => {
+        if (r.AttendanceStatus !== 'LATE') return false;
+        return getDaysDifference(r.TrainingDate) <= thresholds.latenessWindowDays;
+      });
+
+      const lateCount = recentLates.length;
+      if (lateCount >= thresholds.maxLateness) {
+        const severity: AlertSeverity = lateCount >= thresholds.maxLateness * 2 ? 'HIGH' : 'MEDIUM';
+        const fingerprint = `PLAYER_LATENESS::${player.PlayerID}::${currentWeekWindow}`;
+
+        candidates.push({
+          AlertType: 'PLAYER_LATENESS',
+          Status: 'ACTIVE',
+          Severity: severity,
+          RelatedEntityType: 'PLAYER',
+          RelatedEntityId: player.PlayerID,
+          RelatedEntityName: player.FullPlayerName,
+          TeamContext: player.TeamName,
+          Title: `تكرار تأخير اللاعب: ${player.PlayerName || player.FullPlayerName}`,
+          Details: `سجل اللاعب (${player.FullPlayerName} - ${player.TeamName}) عدد ${lateCount} مرات تأخير خلال آخر ${thresholds.latenessWindowDays} يوم، متجاوزاً الحد المسموح (${thresholds.maxLateness} مرات).`,
+          Fingerprint: fingerprint,
+          MetaData: {
+            lateCount,
+            threshold: thresholds.maxLateness,
+            windowDays: thresholds.latenessWindowDays,
+            dates: recentLates.map(a => a.TrainingDate)
+          }
+        });
+      }
+    }
+
+    // ── 3. RULE 3: TEAM ATTENDANCE ALERT ────────────────────────
+    // Trigger when team attendance drops below configured percentage
+    const allTeams = this.getAvailableTeamsFromPlayers();
+    for (const teamName of allTeams) {
+      const teamRecords = this.attendanceRecords.filter(r => r.TeamName === teamName);
+      if (teamRecords.length > 0) {
+        const presentCount = teamRecords.filter(r => r.AttendanceStatus === 'PRESENT').length;
+        const total = teamRecords.length;
+        const attendanceRate = total > 0 ? (presentCount / total) * 100 : 100;
+
+        if (attendanceRate < thresholds.minTeamAttendancePct) {
+          const severity: AlertSeverity = attendanceRate < thresholds.minTeamAttendancePct - 20 ? 'HIGH' : 'MEDIUM';
+          const fingerprint = `TEAM_LOW_ATTENDANCE::${teamName}::${currentWeekWindow}`;
+
+          candidates.push({
+            AlertType: 'TEAM_LOW_ATTENDANCE',
+            Status: 'ACTIVE',
+            Severity: severity,
+            RelatedEntityType: 'TEAM',
+            RelatedEntityId: teamName,
+            RelatedEntityName: teamName,
+            TeamContext: teamName,
+            Title: `انخفاض نسبة حضور فريق: ${teamName}`,
+            Details: `نسبة حضور فريق ${teamName} الإجمالية هي ${attendanceRate.toFixed(1)}%، وهي أقل من الحد الأدنى المستهدف (${thresholds.minTeamAttendancePct}%). إجمالي الحضور: ${presentCount} من ${total} تسجيل.`,
+            Fingerprint: fingerprint,
+            MetaData: {
+              attendanceRate: Number(attendanceRate.toFixed(1)),
+              presentCount,
+              totalRecords: total,
+              threshold: thresholds.minTeamAttendancePct
+            }
+          });
+        }
+      }
+    }
+
+    // ── 4. RULE 4: MISSING ATTENDANCE ALERT ─────────────────────
+    // Identify Training Sessions that have no completed attendance records
+    for (const session of this.trainingSessions) {
+      const hasRecords = this.attendanceRecords.some(r => r.SessionID === session.SessionID);
+      if (!hasRecords) {
+        const fingerprint = `MISSING_ATTENDANCE::${session.SessionID}::${session.TrainingDate || session.Day || 'unspecified'}`;
+
+        candidates.push({
+          AlertType: 'MISSING_ATTENDANCE',
+          Status: 'ACTIVE',
+          Severity: 'LOW',
+          RelatedEntityType: 'SESSION',
+          RelatedEntityId: session.SessionID,
+          RelatedEntityName: `${session.TeamName} - ${session.TrainingDate || session.Day || ''} (${session.StartTime} - ${session.EndTime})`,
+          TeamContext: session.TeamName,
+          Title: `حصة تدريبية غير مسجلة: ${session.TeamName}`,
+          Details: `الحصة التدريبية [${session.SessionID}] المقررة لفريق ${session.TeamName} (${session.TrainingDate || session.Day || ''} من ${session.StartTime} إلى ${session.EndTime} في ${session.Location || 'الصالة'}) بقيادة ${session.CoachName} لا تحتوي على أي سجلات حضور حتى الآن.`,
+          Fingerprint: fingerprint,
+          MetaData: {
+            sessionId: session.SessionID,
+            coachId: session.CoachID,
+            coachName: session.CoachName,
+            location: session.Location,
+            timeRange: session.TimeRange || `${session.StartTime} - ${session.EndTime}`
+          }
+        });
+      }
+    }
+
+    // ── DEDUPLICATION & PERSISTENCE ──────────────────────────────
+    let newAlerts = 0;
+    let updatedAlerts = 0;
+    let skippedDuplicates = 0;
+    const triggeredAlerts: AlertRecord[] = [];
+
+    for (const candidate of candidates) {
+      // 1. Look for existing ACTIVE alert for same rule & entity
+      const existingActive = this.alerts.find(
+        a => a.AlertType === candidate.AlertType &&
+             a.RelatedEntityId === candidate.RelatedEntityId &&
+             a.Status === 'ACTIVE'
+      );
+
+      if (existingActive) {
+        // Update details and metadata in place
+        existingActive.Title = candidate.Title;
+        existingActive.Details = candidate.Details;
+        existingActive.Severity = candidate.Severity;
+        existingActive.MetaData = candidate.MetaData;
+        existingActive.TeamContext = candidate.TeamContext;
+        existingActive.DateGenerated = now.toISOString();
+        updatedAlerts++;
+        triggeredAlerts.push(existingActive);
+        continue;
+      }
+
+      // 2. Look for exact fingerprint (e.g. dismissed or resolved in same window)
+      const existingFingerprint = this.alerts.find(a => a.Fingerprint === candidate.Fingerprint);
+      if (existingFingerprint) {
+        skippedDuplicates++;
+        continue;
+      }
+
+      // 3. Create fresh alert
+      this.alertCounter++;
+      const newAlert: AlertRecord = {
+        ...candidate,
+        AlertID: `ALT-${String(this.alertCounter).padStart(5, '0')}`,
+        DateGenerated: now.toISOString()
+      };
+
+      this.alerts.unshift(newAlert);
+      newAlerts++;
+      triggeredAlerts.push(newAlert);
+    }
+
+    return {
+      success: true,
+      newAlerts,
+      updatedAlerts,
+      skippedDuplicates,
+      totalAlerts: this.alerts.length,
+      generatedAt: now.toISOString(),
+      triggeredAlerts
+    };
+  }
+
+  /**
+   * Retrieves alerts with optional filters
+   */
+  public static getAlerts(filters?: {
+    status?: AlertStatus;
+    type?: AlertType;
+    severity?: AlertSeverity;
+    entityId?: string;
+    teamName?: string;
+    search?: string;
+  }): AlertRecord[] {
+    let list = [...this.alerts];
+
+    if (filters?.status) {
+      list = list.filter(a => a.Status === filters.status);
+    }
+    if (filters?.type) {
+      list = list.filter(a => a.AlertType === filters.type);
+    }
+    if (filters?.severity) {
+      list = list.filter(a => a.Severity === filters.severity);
+    }
+    if (filters?.entityId) {
+      list = list.filter(a => a.RelatedEntityId === filters.entityId);
+    }
+    if (filters?.teamName) {
+      list = list.filter(a => a.TeamContext === filters.teamName || a.RelatedEntityName.includes(filters.teamName!));
+    }
+    if (filters?.search) {
+      const q = filters.search.toLowerCase();
+      list = list.filter(a =>
+        a.Title.toLowerCase().includes(q) ||
+        a.Details.toLowerCase().includes(q) ||
+        a.RelatedEntityName.toLowerCase().includes(q) ||
+        a.RelatedEntityId.toLowerCase().includes(q) ||
+        (a.TeamContext && a.TeamContext.toLowerCase().includes(q))
+      );
+    }
+
+    return list;
+  }
+
+  /**
+   * Updates an alert's status (DISMISSED or RESOLVED)
+   */
+  public static updateAlertStatus(
+    alertId: string,
+    newStatus: 'RESOLVED' | 'DISMISSED',
+    userEmail: string
+  ): { success: boolean; alert?: AlertRecord; error?: string } {
+    const alert = this.alerts.find(a => a.AlertID === alertId);
+    if (!alert) {
+      return { success: false, error: `Alert with ID "${alertId}" not found.` };
+    }
+
+    const now = new Date().toISOString();
+    alert.Status = newStatus;
+
+    if (newStatus === 'RESOLVED') {
+      alert.ResolvedAt = now;
+      alert.ResolvedBy = userEmail;
+    } else {
+      alert.DismissedAt = now;
+      alert.DismissedBy = userEmail;
+    }
+
+    this.auditLogs.unshift({
+      LogID: `LOG-${Date.now().toString().slice(-6)}`,
+      UserEmail: userEmail,
+      UserRole: this.getUserRole(userEmail),
+      Action: 'UPDATE',
+      EntityType: 'ALERT',
+      EntityID: alertId,
+      Details: `Marked alert ${alertId} as ${newStatus}`,
+      Timestamp: now
+    });
+
+    return { success: true, alert };
+  }
+
+  /**
+   * Calculates overall alert statistics
+   */
+  public static getAlertStats(): AlertStats {
+    const active = this.alerts.filter(a => a.Status === 'ACTIVE').length;
+    const dismissed = this.alerts.filter(a => a.Status === 'DISMISSED').length;
+    const resolved = this.alerts.filter(a => a.Status === 'RESOLVED').length;
+
+    const byType: Record<AlertType, number> = {
+      PLAYER_ABSENCE: this.alerts.filter(a => a.AlertType === 'PLAYER_ABSENCE' && a.Status === 'ACTIVE').length,
+      PLAYER_LATENESS: this.alerts.filter(a => a.AlertType === 'PLAYER_LATENESS' && a.Status === 'ACTIVE').length,
+      TEAM_LOW_ATTENDANCE: this.alerts.filter(a => a.AlertType === 'TEAM_LOW_ATTENDANCE' && a.Status === 'ACTIVE').length,
+      MISSING_ATTENDANCE: this.alerts.filter(a => a.AlertType === 'MISSING_ATTENDANCE' && a.Status === 'ACTIVE').length
+    };
+
+    return {
+      total: this.alerts.length,
+      active,
+      dismissed,
+      resolved,
+      byType
+    };
+  }
+
+  /**
+   * Returns comprehensive alert report
+   */
+  public static getAlertsReport(filters?: any): AlertsReport {
+    return {
+      alerts: this.getAlerts(filters),
+      stats: this.getAlertStats(),
+      thresholds: this.getAlertThresholds(),
+      generatedAt: new Date().toISOString()
+    };
+  }
+
+  // =============================================================
+  // PHASE 14 — PROFESSIONAL REPORTING SYSTEM
+  // =============================================================
+
+  /**
+   * Retrieves available filter options scoped by user role (Admin vs Coach)
+   */
+  public static getReportFilterOptions(userEmail: string = 'admin@volleyball.club'): ReportFilterOptions {
+    const role = this.getUserRole(userEmail);
+    const isAdmin = role === 'ADMIN';
+
+    // 1. Teams Scoping
+    let availableTeams: string[] = [];
+    if (isAdmin) {
+      availableTeams = this.getAvailableTeamsFromPlayers();
+    } else {
+      availableTeams = this.getAuthorizedTeamsForCoach(userEmail);
+    }
+
+    // 2. Players Scoping
+    const allPlayers = this.getAllPlayers();
+    const scopedPlayers = allPlayers
+      .filter(p => availableTeams.includes(p.TeamName))
+      .map(p => ({
+        id: p.PlayerID,
+        name: p.FullPlayerName || p.PlayerName,
+        team: p.TeamName
+      }));
+
+    // 3. Coaches
+    const coaches = this.coaches.map(c => ({
+      id: c.CoachID,
+      name: c.FullName,
+      email: c.Email
+    }));
+
+    // 4. Birth Years & Genders
+    const birthYearsSet = new Set<string>();
+    const gendersSet = new Set<string>();
+
+    allPlayers.forEach(p => {
+      if (p.TeamBirthYear) birthYearsSet.add(String(p.TeamBirthYear));
+      if (p.Gender) gendersSet.add(p.Gender);
+    });
+
+    return {
+      availableReportTypes: [
+        { id: 'DAILY_ATTENDANCE', label: 'تقرير الحضور اليومي', labelEn: 'Daily Attendance Report' },
+        { id: 'WEEKLY_TEAM', label: 'التقرير الأسبوعي للفرق', labelEn: 'Weekly Team Report' },
+        { id: 'MONTHLY_TEAM', label: 'التقرير الشهري للفرق', labelEn: 'Monthly Team Report' },
+        { id: 'PLAYER_ATTENDANCE', label: 'تقرير حضور وغياب اللاعبين', labelEn: 'Player Attendance Report' },
+        { id: 'TEAM_ATTENDANCE', label: 'تقرير الحضور الشامل للفرق', labelEn: 'Team Attendance Report' },
+        { id: 'COACH_ATTENDANCE_ACTIVITY', label: 'تقرير نشاط وتسجيل المدربين', labelEn: 'Coach Attendance Activity Report' }
+      ],
+      availableTeams,
+      availablePlayers: scopedPlayers,
+      availableCoaches: coaches,
+      availableBirthYears: Array.from(birthYearsSet).sort(),
+      availableGenders: Array.from(gendersSet).sort()
+    };
+  }
+
+  /**
+   * Generates comprehensive structured attendance & activity reports
+   */
+  public static generateReport(
+    userEmail: string = 'admin@volleyball.club',
+    filters: ReportFilterParams = {}
+  ): { success: boolean; data?: ReportDataPayload; error?: string } {
+    const role = this.getUserRole(userEmail);
+    const isAdmin = role === 'ADMIN';
+    const reportType: ReportType = filters.reportType || 'TEAM_ATTENDANCE';
+
+    // 1. RBAC Team Authorization Check
+    let authorizedTeams = this.getAvailableTeamsFromPlayers();
+    if (!isAdmin) {
+      authorizedTeams = this.getAuthorizedTeamsForCoach(userEmail);
+      if (filters.teamName && !authorizedTeams.includes(filters.teamName)) {
+        return {
+          success: false,
+          error: `Unauthorized: Coach (${userEmail}) is not permitted to generate reports for "${filters.teamName}".`
+        };
+      }
+    }
+
+    const scopedTeams = filters.teamName ? [filters.teamName] : authorizedTeams;
+
+    const isTeamMatch = (recordTeam: string) => {
+      if (!filters.teamName && isAdmin) return true;
+      return scopedTeams.some(st => 
+        st.toLowerCase() === recordTeam.toLowerCase() ||
+        st.includes(recordTeam) ||
+        recordTeam.includes(st)
+      );
+    };
+
+    // 2. Helper Date Parser
+    const isWithinDateRange = (dateStr?: string) => {
+      if (!dateStr) return true;
+      if (filters.startDate && dateStr < filters.startDate) return false;
+      if (filters.endDate && dateStr > filters.endDate) return false;
+      return true;
+    };
+
+    // 3. Filter Master Players
+    const hasDemographicFilter = Boolean(filters.playerId || filters.teamBirthYear || filters.gender);
+    const allPlayers = this.getAllPlayers().filter(p => {
+      if (!isTeamMatch(p.TeamName)) return false;
+      if (filters.playerId && p.PlayerID !== filters.playerId) return false;
+      if (filters.teamBirthYear && String(p.TeamBirthYear) !== String(filters.teamBirthYear)) return false;
+      if (filters.gender && p.Gender !== filters.gender) return false;
+      return true;
+    });
+
+    const matchingPlayerIds = new Set(allPlayers.map(p => p.PlayerID));
+
+    // 4. Filter Attendance Records
+    const filteredRecords = this.attendanceRecords.filter(r => {
+      if (!isTeamMatch(r.TeamName)) return false;
+      if (!isWithinDateRange(r.TrainingDate)) return false;
+      if (filters.playerId && r.PlayerID !== filters.playerId) return false;
+      if (filters.coachId && r.CoachID !== filters.coachId) return false;
+      if (hasDemographicFilter && !matchingPlayerIds.has(r.PlayerID)) return false;
+      return true;
+    });
+
+    // 5. Global Summary Metrics
+    const totalRecords = filteredRecords.length;
+    const presentCount = filteredRecords.filter(r => r.AttendanceStatus === 'PRESENT').length;
+    const lateCount = filteredRecords.filter(r => r.AttendanceStatus === 'LATE').length;
+    const absentCount = filteredRecords.filter(r => r.AttendanceStatus === 'ABSENT').length;
+    const excusedCount = filteredRecords.filter(r => r.AttendanceStatus === 'EXCUSED').length;
+
+    const attendanceRate = totalRecords > 0 ? Number((((presentCount + lateCount) / totalRecords) * 100).toFixed(1)) : 0;
+    const absenceRate = totalRecords > 0 ? Number(((absentCount / totalRecords) * 100).toFixed(1)) : 0;
+    const lateRate = totalRecords > 0 ? Number(((lateCount / totalRecords) * 100).toFixed(1)) : 0;
+
+    // Distinct Sessions Count
+    const distinctSessionIds = new Set(filteredRecords.map(r => r.SessionID || `${r.TeamName}_${r.TrainingDate}`));
+    const totalSessions = distinctSessionIds.size;
+
+    // Discipline Settings for scoring
+    const discSettings = this.getDisciplineSettings();
+    const calcDisciplineScore = (p: number, l: number, a: number, e: number, total: number) => {
+      if (total === 0) return 100;
+      const weighted = (p * 1.0) + (l * 0.65) + (e * 0.5) + (a * 0.0);
+      return Math.min(100, Math.max(0, Math.round((weighted / total) * 100)));
+    };
+
+    const avgDiscipline = calcDisciplineScore(presentCount, lateCount, absentCount, excusedCount, totalRecords);
+
+    const summary: ReportSummaryMetrics = {
+      totalRecords,
+      totalSessions,
+      presentCount,
+      lateCount,
+      absentCount,
+      excusedCount,
+      attendanceRate,
+      absenceRate,
+      lateRate,
+      averageDisciplineScore: avgDiscipline
+    };
+
+    // 6. Generate Specific Report Type Payload
+    let dailyRows: DailyAttendanceReportRow[] | undefined;
+    let weeklyRows: WeeklyTeamReportRow[] | undefined;
+    let monthlyRows: MonthlyTeamReportRow[] | undefined;
+    let playerRows: PlayerAttendanceReportRow[] | undefined;
+    let teamRows: TeamAttendanceReportRow[] | undefined;
+    let coachRows: CoachActivityReportRow[] | undefined;
+
+    let title = 'تقرير الحضور والانضباط';
+
+    // -------------------------------------------------------------
+    // TYPE 1: DAILY_ATTENDANCE
+    // -------------------------------------------------------------
+    if (reportType === 'DAILY_ATTENDANCE') {
+      title = 'تقرير الحضور اليومي وتفاصيل الحصص';
+      const dailyMap = new Map<string, DailyAttendanceReportRow>();
+
+      filteredRecords.forEach(r => {
+        const key = `${r.TrainingDate}__${r.SessionID || 'DEFAULT'}__${r.TeamName}`;
+        if (!dailyMap.has(key)) {
+          const session = this.trainingSessions.find(s => s.SessionID === r.SessionID);
+          dailyMap.set(key, {
+            date: r.TrainingDate,
+            sessionId: r.SessionID || 'SESSION',
+            teamName: r.TeamName,
+            coachName: r.CoachName || 'المدرب المسؤول',
+            location: session?.Location || 'الصالة الرئيسية',
+            timeRange: session?.TimeRange || (session ? `${session.StartTime} - ${session.EndTime}` : '17:00 - 18:30'),
+            totalPlayers: 0,
+            presentCount: 0,
+            lateCount: 0,
+            absentCount: 0,
+            excusedCount: 0,
+            attendanceRate: 0,
+            absenceRate: 0,
+            lateRate: 0,
+            records: []
+          });
+        }
+
+        const row = dailyMap.get(key)!;
+        row.totalPlayers++;
+        if (r.AttendanceStatus === 'PRESENT') row.presentCount++;
+        else if (r.AttendanceStatus === 'LATE') row.lateCount++;
+        else if (r.AttendanceStatus === 'ABSENT') row.absentCount++;
+        else if (r.AttendanceStatus === 'EXCUSED') row.excusedCount++;
+
+        row.records.push({
+          playerId: r.PlayerID,
+          playerName: r.PlayerName,
+          status: r.AttendanceStatus,
+          arrivalTime: r.ArrivalTime,
+          lateMinutes: r.LateMinutes,
+          excuseType: r.ExcuseType,
+          notes: r.Notes
+        });
+      });
+
+      dailyRows = Array.from(dailyMap.values()).map(row => {
+        const t = row.totalPlayers;
+        return {
+          ...row,
+          attendanceRate: t > 0 ? Number((((row.presentCount + row.lateCount) / t) * 100).toFixed(1)) : 0,
+          absenceRate: t > 0 ? Number(((row.absentCount / t) * 100).toFixed(1)) : 0,
+          lateRate: t > 0 ? Number(((row.lateCount / t) * 100).toFixed(1)) : 0
+        };
+      }).sort((a, b) => b.date.localeCompare(a.date));
+    }
+
+    // -------------------------------------------------------------
+    // TYPE 2: WEEKLY_TEAM
+    // -------------------------------------------------------------
+    else if (reportType === 'WEEKLY_TEAM') {
+      title = 'التقرير الأسبوعي لأداء الفرق وانضباط الحضور';
+      const weeklyMap = new Map<string, WeeklyTeamReportRow>();
+
+      filteredRecords.forEach(r => {
+        const d = new Date(r.TrainingDate);
+        const year = d.getFullYear() || 2026;
+        // Simple ISO week calculation
+        const firstDayOfYear = new Date(year, 0, 1);
+        const pastDaysOfYear = (d.getTime() - firstDayOfYear.getTime()) / 86400000;
+        const weekNum = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        const weekKey = `${year}-W${String(weekNum).padStart(2, '0')}`;
+        const key = `${r.TeamName}__${weekKey}`;
+
+        if (!weeklyMap.has(key)) {
+          const samplePlayer = allPlayers.find(p => p.TeamName === r.TeamName);
+          weeklyMap.set(key, {
+            weekKey,
+            weekLabel: `الأسبوع ${weekNum} (${year})`,
+            teamName: r.TeamName,
+            teamBirthYear: samplePlayer?.TeamBirthYear,
+            gender: samplePlayer?.Gender,
+            sessionCount: 0,
+            totalAttendances: 0,
+            presentCount: 0,
+            lateCount: 0,
+            absentCount: 0,
+            excusedCount: 0,
+            attendanceRate: 0,
+            absenceRate: 0,
+            lateRate: 0,
+            disciplineScore: 100
+          });
+        }
+
+        const row = weeklyMap.get(key)!;
+        row.totalAttendances++;
+        if (r.AttendanceStatus === 'PRESENT') row.presentCount++;
+        else if (r.AttendanceStatus === 'LATE') row.lateCount++;
+        else if (r.AttendanceStatus === 'ABSENT') row.absentCount++;
+        else if (r.AttendanceStatus === 'EXCUSED') row.excusedCount++;
+      });
+
+      weeklyRows = Array.from(weeklyMap.values()).map(row => {
+        const t = row.totalAttendances;
+        const sessionsInWeek = new Set(
+          filteredRecords
+            .filter(r => r.TeamName === row.teamName)
+            .map(r => r.SessionID || r.TrainingDate)
+        ).size;
+
+        return {
+          ...row,
+          sessionCount: Math.max(1, sessionsInWeek),
+          attendanceRate: t > 0 ? Number((((row.presentCount + row.lateCount) / t) * 100).toFixed(1)) : 0,
+          absenceRate: t > 0 ? Number(((row.absentCount / t) * 100).toFixed(1)) : 0,
+          lateRate: t > 0 ? Number(((row.lateCount / t) * 100).toFixed(1)) : 0,
+          disciplineScore: calcDisciplineScore(row.presentCount, row.lateCount, row.absentCount, row.excusedCount, t)
+        };
+      }).sort((a, b) => b.weekKey.localeCompare(a.weekKey) || a.teamName.localeCompare(b.teamName));
+    }
+
+    // -------------------------------------------------------------
+    // TYPE 3: MONTHLY_TEAM
+    // -------------------------------------------------------------
+    else if (reportType === 'MONTHLY_TEAM') {
+      title = 'التقرير الشهري التراكمي للفرق';
+      const monthlyMap = new Map<string, MonthlyTeamReportRow>();
+
+      const monthNamesAr: Record<string, string> = {
+        '01': 'يناير', '02': 'فبراير', '03': 'مارس', '04': 'أبريل',
+        '05': 'مايو', '06': 'يونيو', '07': 'يوليو', '08': 'أغسطس',
+        '09': 'سبتمبر', '10': 'أكتوبر', '11': 'نوفمبر', '12': 'ديسمبر'
+      };
+
+      filteredRecords.forEach(r => {
+        const monthKey = r.TrainingDate ? r.TrainingDate.substring(0, 7) : '2026-08';
+        const key = `${r.TeamName}__${monthKey}`;
+
+        if (!monthlyMap.has(key)) {
+          const samplePlayer = allPlayers.find(p => p.TeamName === r.TeamName);
+          const [yr, mo] = monthKey.split('-');
+          const monthLabel = `${monthNamesAr[mo] || mo} ${yr}`;
+
+          monthlyMap.set(key, {
+            monthKey,
+            monthLabel,
+            teamName: r.TeamName,
+            teamBirthYear: samplePlayer?.TeamBirthYear,
+            gender: samplePlayer?.Gender,
+            sessionCount: 0,
+            uniquePlayersCount: 0,
+            totalAttendances: 0,
+            presentCount: 0,
+            lateCount: 0,
+            absentCount: 0,
+            excusedCount: 0,
+            attendanceRate: 0,
+            absenceRate: 0,
+            lateRate: 0,
+            disciplineScore: 100
+          });
+        }
+
+        const row = monthlyMap.get(key)!;
+        row.totalAttendances++;
+        if (r.AttendanceStatus === 'PRESENT') row.presentCount++;
+        else if (r.AttendanceStatus === 'LATE') row.lateCount++;
+        else if (r.AttendanceStatus === 'ABSENT') row.absentCount++;
+        else if (r.AttendanceStatus === 'EXCUSED') row.excusedCount++;
+      });
+
+      monthlyRows = Array.from(monthlyMap.values()).map(row => {
+        const t = row.totalAttendances;
+        const matchingTeamRecords = filteredRecords.filter(
+          r => r.TeamName === row.teamName && r.TrainingDate.startsWith(row.monthKey)
+        );
+        const uniquePlayers = new Set(matchingTeamRecords.map(r => r.PlayerID)).size;
+        const sessions = new Set(matchingTeamRecords.map(r => r.SessionID || r.TrainingDate)).size;
+
+        return {
+          ...row,
+          sessionCount: Math.max(1, sessions),
+          uniquePlayersCount: uniquePlayers,
+          attendanceRate: t > 0 ? Number((((row.presentCount + row.lateCount) / t) * 100).toFixed(1)) : 0,
+          absenceRate: t > 0 ? Number(((row.absentCount / t) * 100).toFixed(1)) : 0,
+          lateRate: t > 0 ? Number(((row.lateCount / t) * 100).toFixed(1)) : 0,
+          disciplineScore: calcDisciplineScore(row.presentCount, row.lateCount, row.absentCount, row.excusedCount, t)
+        };
+      }).sort((a, b) => b.monthKey.localeCompare(a.monthKey) || a.teamName.localeCompare(b.teamName));
+    }
+
+    // -------------------------------------------------------------
+    // TYPE 4: PLAYER_ATTENDANCE
+    // -------------------------------------------------------------
+    else if (reportType === 'PLAYER_ATTENDANCE') {
+      title = 'تقرير حضور وانضباط اللاعبين الفردي';
+
+      playerRows = allPlayers.map(p => {
+        const pRecords = filteredRecords.filter(r => r.PlayerID === p.PlayerID);
+        const t = pRecords.length;
+        const pres = pRecords.filter(r => r.AttendanceStatus === 'PRESENT').length;
+        const lt = pRecords.filter(r => r.AttendanceStatus === 'LATE').length;
+        const abs = pRecords.filter(r => r.AttendanceStatus === 'ABSENT').length;
+        const exc = pRecords.filter(r => r.AttendanceStatus === 'EXCUSED').length;
+
+        const rate = t > 0 ? Number((((pres + lt) / t) * 100).toFixed(1)) : 0;
+        const absRate = t > 0 ? Number(((abs / t) * 100).toFixed(1)) : 0;
+        const ltRate = t > 0 ? Number(((lt / t) * 100).toFixed(1)) : 0;
+
+        // Individual discipline calculation (100 - penalties)
+        const penalty = (abs * discSettings.unexcusedAbsencePenalty) +
+                        (exc * discSettings.excusedAbsencePenalty) +
+                        (lt * discSettings.latePenalty);
+        const discScore = Math.max(0, Math.min(100, Math.round(discSettings.startingPoints - penalty)));
+
+        return {
+          playerId: p.PlayerID,
+          fullName: p.FullPlayerName,
+          shortName: p.PlayerName,
+          teamName: p.TeamName,
+          gender: p.Gender,
+          birthYear: p.BirthYear || p.TeamBirthYear,
+          totalSessions: t,
+          presentCount: pres,
+          lateCount: lt,
+          absentCount: abs,
+          excusedCount: exc,
+          attendanceRate: rate,
+          absenceRate: absRate,
+          lateRate: ltRate,
+          disciplineScore: discScore,
+          history: pRecords.map(r => ({
+            date: r.TrainingDate,
+            sessionId: r.SessionID,
+            status: r.AttendanceStatus,
+            lateMinutes: r.LateMinutes,
+            notes: r.Notes
+          }))
+        };
+      }).sort((a, b) => b.totalSessions - a.totalSessions || b.attendanceRate - a.attendanceRate);
+    }
+
+    // -------------------------------------------------------------
+    // TYPE 5: TEAM_ATTENDANCE
+    // -------------------------------------------------------------
+    else if (reportType === 'TEAM_ATTENDANCE') {
+      title = 'تقرير الحضور الشامل ومؤشرات الانضباط للفرق';
+
+      teamRows = scopedTeams.map(teamName => {
+        const teamRecords = filteredRecords.filter(r => 
+          r.TeamName === teamName || 
+          r.TeamName.includes(teamName) || 
+          teamName.includes(r.TeamName)
+        );
+        const t = teamRecords.length;
+        const pres = teamRecords.filter(r => r.AttendanceStatus === 'PRESENT').length;
+        const lt = teamRecords.filter(r => r.AttendanceStatus === 'LATE').length;
+        const abs = teamRecords.filter(r => r.AttendanceStatus === 'ABSENT').length;
+        const exc = teamRecords.filter(r => r.AttendanceStatus === 'EXCUSED').length;
+
+        const rate = t > 0 ? Number((((pres + lt) / t) * 100).toFixed(1)) : 0;
+        const absRate = t > 0 ? Number(((abs / t) * 100).toFixed(1)) : 0;
+        const ltRate = t > 0 ? Number(((lt / t) * 100).toFixed(1)) : 0;
+
+        const teamPlayers = allPlayers.filter(p => p.TeamName === teamName);
+        const samplePlayer = teamPlayers[0];
+        const assignedCoach = this.coachTeams.find(ct => ct.TeamName === teamName && ct.Active);
+
+        const sessionsCount = new Set(teamRecords.map(r => r.SessionID || r.TrainingDate)).size;
+
+        return {
+          teamName,
+          club: samplePlayer?.Club || (teamName.includes('راية') ? 'راية' : 'المؤسسة'),
+          teamBirthYear: samplePlayer?.TeamBirthYear,
+          gender: samplePlayer?.Gender,
+          headCoachName: assignedCoach?.CoachName || 'الجهاز الفني المعتمد',
+          playerCount: teamPlayers.length,
+          sessionCount: sessionsCount,
+          totalAttendances: t,
+          presentCount: pres,
+          lateCount: lt,
+          absentCount: abs,
+          excusedCount: exc,
+          attendanceRate: rate,
+          absenceRate: absRate,
+          lateRate: ltRate,
+          disciplineScore: calcDisciplineScore(pres, lt, abs, exc, t)
+        };
+      }).sort((a, b) => b.attendanceRate - a.attendanceRate || b.totalAttendances - a.totalAttendances);
+    }
+
+    // -------------------------------------------------------------
+    // TYPE 6: COACH_ATTENDANCE_ACTIVITY
+    // -------------------------------------------------------------
+    else if (reportType === 'COACH_ATTENDANCE_ACTIVITY') {
+      title = 'تقرير نشاط وإحصائيات تسجيل المدربين';
+
+      coachRows = this.coaches.map(coach => {
+        const coachAssignments = this.coachTeams.filter(ct => ct.CoachID === coach.CoachID && ct.Active);
+        const assignedTeamNames = coachAssignments.map(ct => ct.TeamName);
+
+        const coachRecords = filteredRecords.filter(r => r.CoachID === coach.CoachID || assignedTeamNames.includes(r.TeamName));
+        const totalLogged = coachRecords.filter(r => r.CoachID === coach.CoachID).length;
+
+        const pres = coachRecords.filter(r => r.AttendanceStatus === 'PRESENT').length;
+        const lt = coachRecords.filter(r => r.AttendanceStatus === 'LATE').length;
+        const avgRate = coachRecords.length > 0 ? Number((((pres + lt) / coachRecords.length) * 100).toFixed(1)) : 0;
+
+        const scheduledSessions = this.trainingSessions.filter(s => s.CoachID === coach.CoachID || assignedTeamNames.includes(s.TeamName)).length;
+        const conductedSessions = new Set(coachRecords.filter(r => r.CoachID === coach.CoachID).map(r => r.SessionID)).size;
+
+        const sortedDates = coachRecords.map(r => r.TrainingDate).filter(Boolean).sort().reverse();
+
+        return {
+          coachId: coach.CoachID,
+          coachName: coach.FullName,
+          coachEmail: coach.Email,
+          role: coach.Role === 'ADMIN' ? 'مدير فني / مشرف' : (coach.Role === 'HEAD_COACH' ? 'مدرب رئيسي' : 'مدرب مساعد'),
+          assignedTeams: assignedTeamNames,
+          scheduledSessionsCount: scheduledSessions,
+          conductedSessionsCount: conductedSessions,
+          totalAttendanceRecordsLogged: totalLogged,
+          avgTeamAttendanceRate: avgRate,
+          lastActiveDate: sortedDates[0] || '—'
+        };
+      }).sort((a, b) => b.totalAttendanceRecordsLogged - a.totalAttendanceRecordsLogged);
+    }
+
+    return {
+      success: true,
+      data: {
+        reportType,
+        title,
+        generatedAt: new Date().toISOString(),
+        generatedByUser: userEmail,
+        filtersApplied: filters,
+        summary,
+        dailyRows,
+        weeklyRows,
+        monthlyRows,
+        playerRows,
+        teamRows,
+        coachRows
+      }
+    };
+  }
+
+  // =============================================================
+  // PHASE 15 — EXPORT & PRINTING ENGINE
+  // =============================================================
+
+  /**
+   * Generates downloadable export file content (CSV or Excel) with strict RBAC permission validation
+   */
+  public static generateReportExportFile(
+    userEmail: string = 'admin@volleyball.club',
+    filters: ReportFilterParams = {},
+    format: 'csv' | 'excel' = 'csv'
+  ): { success: boolean; content?: string; mimeType?: string; filename?: string; error?: string } {
+    const reportRes = this.generateReport(userEmail, filters);
+    if (!reportRes.success || !reportRes.data) {
+      return { success: false, error: reportRes.error || 'Failed to generate report data for export.' };
+    }
+
+    const report = reportRes.data;
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const timeStr = now.toTimeString().slice(0, 8);
+
+    const escapeCSVCell = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return `"${str}"`;
+    };
+
+    if (format === 'csv') {
+      const BOM = '\uFEFF';
+      const lines: string[] = [];
+
+      // Metadata
+      lines.push(`${escapeCSVCell('منظومة إدارة فرق الكرة الطائرة')},${escapeCSVCell(report.title)}`);
+      lines.push(`${escapeCSVCell('تاريخ التوليد')},${escapeCSVCell(`${dateStr} ${timeStr}`)}`);
+      lines.push(`${escapeCSVCell('المستخدم')},${escapeCSVCell(userEmail)}`);
+      lines.push(`${escapeCSVCell('معايير الفلترة')},${escapeCSVCell(JSON.stringify(filters))}`);
+      lines.push('');
+
+      // Summary
+      const s = report.summary;
+      lines.push(`${escapeCSVCell('=== ملخص المؤشرات الإجمالية ===')}`);
+      lines.push(`${escapeCSVCell('إجمالي الحصص')},${escapeCSVCell('إجمالي السجلات')},${escapeCSVCell('حاضر')},${escapeCSVCell('متأخر')},${escapeCSVCell('غياب')},${escapeCSVCell('عذر')},${escapeCSVCell('نسبة الحضور')},${escapeCSVCell('مؤشر الانضباط')}`);
+      lines.push(`${s.totalSessions},${s.totalRecords},${s.presentCount},${s.lateCount},${s.absentCount},${s.excusedCount},"${s.attendanceRate}%","${s.averageDisciplineScore || 100}%"`);
+      lines.push('');
+      lines.push(`${escapeCSVCell('=== جدول البيانات ===')}`);
+
+      // Data Rows
+      if (report.reportType === 'DAILY_ATTENDANCE' && report.dailyRows) {
+        lines.push(`${escapeCSVCell('التاريخ')},${escapeCSVCell('كود الحصة')},${escapeCSVCell('الفريق')},${escapeCSVCell('المدرب')},${escapeCSVCell('الموقع')},${escapeCSVCell('اللاعبون')},${escapeCSVCell('حاضر')},${escapeCSVCell('متأخر')},${escapeCSVCell('غياب')},${escapeCSVCell('نسبة الحضور')}`);
+        report.dailyRows.forEach(r => {
+          lines.push(`${escapeCSVCell(r.date)},${escapeCSVCell(r.sessionId)},${escapeCSVCell(r.teamName)},${escapeCSVCell(r.coachName)},${escapeCSVCell(r.location)},${r.totalPlayers},${r.presentCount},${r.lateCount},${r.absentCount},"${r.attendanceRate}%"`);
+        });
+      } else if (report.reportType === 'WEEKLY_TEAM' && report.weeklyRows) {
+        lines.push(`${escapeCSVCell('الأسبوع')},${escapeCSVCell('الفريق')},${escapeCSVCell('المواليد')},${escapeCSVCell('النوع')},${escapeCSVCell('الحصص')},${escapeCSVCell('السجلات')},${escapeCSVCell('حاضر')},${escapeCSVCell('متأخر')},${escapeCSVCell('غياب')},${escapeCSVCell('نسبة الحضور')},${escapeCSVCell('الانضباط')}`);
+        report.weeklyRows.forEach(r => {
+          lines.push(`${escapeCSVCell(r.weekLabel)},${escapeCSVCell(r.teamName)},${escapeCSVCell(r.teamBirthYear || '—')},${escapeCSVCell(r.gender || '—')},${r.sessionCount},${r.totalAttendances},${r.presentCount},${r.lateCount},${r.absentCount},"${r.attendanceRate}%","${r.disciplineScore}%"`);
+        });
+      } else if (report.reportType === 'MONTHLY_TEAM' && report.monthlyRows) {
+        lines.push(`${escapeCSVCell('الشهر')},${escapeCSVCell('الفريق')},${escapeCSVCell('المواليد')},${escapeCSVCell('النوع')},${escapeCSVCell('الحصص')},${escapeCSVCell('اللاعبون')},${escapeCSVCell('حاضر')},${escapeCSVCell('متأخر')},${escapeCSVCell('غياب')},${escapeCSVCell('نسبة الحضور')},${escapeCSVCell('الانضباط')}`);
+        report.monthlyRows.forEach(r => {
+          lines.push(`${escapeCSVCell(r.monthLabel)},${escapeCSVCell(r.teamName)},${escapeCSVCell(r.teamBirthYear || '—')},${escapeCSVCell(r.gender || '—')},${r.sessionCount},${r.uniquePlayersCount},${r.presentCount},${r.lateCount},${r.absentCount},"${r.attendanceRate}%","${r.disciplineScore}%"`);
+        });
+      } else if (report.reportType === 'PLAYER_ATTENDANCE' && report.playerRows) {
+        lines.push(`${escapeCSVCell('كود اللاعب')},${escapeCSVCell('اسم اللاعب رباعي')},${escapeCSVCell('الفريق')},${escapeCSVCell('المواليد')},${escapeCSVCell('الحصص')},${escapeCSVCell('حاضر')},${escapeCSVCell('متأخر')},${escapeCSVCell('غياب')},${escapeCSVCell('نسبة الالتزام')},${escapeCSVCell('نقاط الانضباط')}`);
+        report.playerRows.forEach(r => {
+          lines.push(`${escapeCSVCell(r.playerId)},${escapeCSVCell(r.fullName)},${escapeCSVCell(r.teamName)},${escapeCSVCell(r.birthYear || '—')},${r.totalSessions},${r.presentCount},${r.lateCount},${r.absentCount},"${r.attendanceRate}%",${r.disciplineScore}`);
+        });
+      } else if (report.reportType === 'TEAM_ATTENDANCE' && report.teamRows) {
+        lines.push(`${escapeCSVCell('الفريق')},${escapeCSVCell('النادي')},${escapeCSVCell('المواليد')},${escapeCSVCell('المدير الفني')},${escapeCSVCell('اللاعبون')},${escapeCSVCell('الحصص')},${escapeCSVCell('حاضر')},${escapeCSVCell('متأخر')},${escapeCSVCell('غياب')},${escapeCSVCell('نسبة الحضور')},${escapeCSVCell('الانضباط')}`);
+        report.teamRows.forEach(r => {
+          lines.push(`${escapeCSVCell(r.teamName)},${escapeCSVCell(r.club || 'المؤسسة')},${escapeCSVCell(r.teamBirthYear || '—')},${escapeCSVCell(r.headCoachName || '—')},${r.playerCount},${r.sessionCount},${r.presentCount},${r.lateCount},${r.absentCount},"${r.attendanceRate}%","${r.disciplineScore}%"`);
+        });
+      } else if (report.reportType === 'COACH_ATTENDANCE_ACTIVITY' && report.coachRows) {
+        lines.push(`${escapeCSVCell('كود المدرب')},${escapeCSVCell('اسم المدرب')},${escapeCSVCell('الدور')},${escapeCSVCell('الفرق المعتمدة')},${escapeCSVCell('المجدولة')},${escapeCSVCell('المسجلة')},${escapeCSVCell('إجمالي السجلات')},${escapeCSVCell('متوسط الحضور')},${escapeCSVCell('آخر نشاط')}`);
+        report.coachRows.forEach(r => {
+          lines.push(`${escapeCSVCell(r.coachId)},${escapeCSVCell(r.coachName)},${escapeCSVCell(r.role)},${escapeCSVCell(r.assignedTeams.join(' - '))},${r.scheduledSessionsCount},${r.conductedSessionsCount},${r.totalAttendanceRecordsLogged},"${r.avgTeamAttendanceRate}%",${escapeCSVCell(r.lastActiveDate || '—')}`);
+        });
+      }
+
+      const content = BOM + lines.join('\r\n');
+      return {
+        success: true,
+        content,
+        mimeType: 'text/csv; charset=utf-8',
+        filename: `Report_${report.reportType}_${dateStr}.csv`
+      };
+    }
+
+    // Excel HTML format
+    const s = report.summary;
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Arial; direction: rtl; }
+            table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+            th, td { border: 1px solid #cbd5e1; padding: 8px 12px; font-size: 11pt; }
+            .header-box { background: #0f172a; color: #ffffff; padding: 15px; border-radius: 8px; }
+          </style>
+        </head>
+        <body>
+          <div class="header-box">
+            <h2>🏐 ${report.title}</h2>
+            <p>تاريخ التوليد: ${dateStr} ${timeStr} | المستخدم: ${userEmail}</p>
+          </div>
+          <table style="margin-top: 15px;">
+            <tr style="background-color: #f1f5f9; font-weight: bold; text-align: center;">
+              <td>الحصص: ${s.totalSessions}</td>
+              <td>السجلات: ${s.totalRecords}</td>
+              <td style="color: #16a34a;">حاضر: ${s.presentCount} (${s.attendanceRate}%)</td>
+              <td style="color: #d97706;">متأخر: ${s.lateCount}</td>
+              <td style="color: #dc2626;">غياب: ${s.absentCount}</td>
+              <td style="color: #7c3aed;">الانضباط: ${s.averageDisciplineScore || 100}%</td>
+            </tr>
+          </table>
+        </body>
+      </html>`;
+
+    return {
+      success: true,
+      content: '\uFEFF' + excelHtml,
+      mimeType: 'application/vnd.ms-excel; charset=utf-8',
+      filename: `Report_${report.reportType}_${dateStr}.xls`
+    };
+  }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -18,7 +18,9 @@ import {
   Trophy,
   CalendarCheck,
   CalendarDays,
-  Database
+  Database,
+  BellRing,
+  ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AppViewId, AdminViewId, CoachViewId } from '../../types/navigation';
@@ -36,19 +38,42 @@ export const Sidebar: React.FC = () => {
     setAppMode
   } = useApp();
 
+  const [activeAlertsCount, setActiveAlertsCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (currentUser?.role === 'ADMIN') {
+      fetch('/api/alerts/stats')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.stats) {
+            setActiveAlertsCount(data.stats.active || 0);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [currentUser, currentView]);
+
   const isAdmin = currentUser?.role === 'ADMIN';
   const isHeadCoach = currentUser?.role === 'HEAD_COACH';
   const isAssistantCoach = currentUser?.role === 'ASSISTANT_COACH';
 
   // Define Admin Navigation Items
-  const adminNavItems: { id: AdminViewId; label: string; icon: React.ReactNode; badge?: string }[] = [
+  const adminNavItems: { id: AdminViewId; label: string; icon: React.ReactNode; badge?: string; badgeColor?: string }[] = [
     { id: 'admin-dashboard', label: t.navDashboard, icon: <LayoutDashboard className="w-4 h-4" /> },
+    { 
+      id: 'admin-alerts', 
+      label: t.navAlerts, 
+      icon: <BellRing className="w-4 h-4 text-rose-500" />,
+      badge: activeAlertsCount > 0 ? `${activeAlertsCount}` : undefined,
+      badgeColor: 'bg-rose-500 text-white'
+    },
     { id: 'admin-sessions', label: t.navSessions, icon: <CalendarDays className="w-4 h-4 text-orange-500" /> },
     { id: 'admin-players', label: t.navPlayers, icon: <Users className="w-4 h-4" /> },
     { id: 'admin-coaches', label: t.navCoaches, icon: <UserCheck className="w-4 h-4" /> },
     { id: 'admin-team-assignments', label: t.navTeamAssignments, icon: <Layers className="w-4 h-4" /> },
     { id: 'admin-attendance', label: t.navAttendance, icon: <ClipboardCheck className="w-4 h-4" /> },
     { id: 'admin-reports', label: t.navReports, icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'admin-audit-log', label: language === 'ar' ? 'سجل التدقيق والأمان' : 'Audit & Security Logs', icon: <ShieldAlert className="w-4 h-4 text-rose-500" /> },
     { id: 'admin-database-settings', label: t.navDatabaseSettings, icon: <Database className="w-4 h-4 text-emerald-500" /> },
     { id: 'admin-settings', label: t.navSettings, icon: <Settings className="w-4 h-4" /> }
   ];
@@ -60,7 +85,8 @@ export const Sidebar: React.FC = () => {
     { id: 'coach-teams', label: t.navMyTeams, icon: <Users className="w-4 h-4" />, badge: currentUser?.authorizedTeams?.length ? `${currentUser.authorizedTeams.length}` : undefined },
     { id: 'coach-attendance', label: t.navCoachAttendance, icon: <CalendarCheck className="w-4 h-4 text-emerald-500" /> },
     { id: 'coach-history', label: t.navAttendanceHistory, icon: <History className="w-4 h-4" /> },
-    { id: 'coach-stats', label: t.navPlayerStats, icon: <Activity className="w-4 h-4" /> }
+    { id: 'coach-stats', label: t.navPlayerStats, icon: <Activity className="w-4 h-4" /> },
+    { id: 'coach-reports', label: t.navReports, icon: <BarChart3 className="w-4 h-4 text-purple-500" /> }
   ];
 
   return (
@@ -112,6 +138,17 @@ export const Sidebar: React.FC = () => {
                       </span>
                       <span>{item.label}</span>
                     </div>
+                    {item.badge && (
+                      <span
+                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold font-mono ${
+                          isActive
+                            ? 'bg-white text-orange-600'
+                            : (item.badgeColor || 'bg-slate-100 dark:bg-slate-800 text-slate-500')
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
                   </button>
                 );
               })}

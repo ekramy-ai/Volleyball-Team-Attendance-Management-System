@@ -79,7 +79,8 @@ export const OFFICIAL_TEAMS_20: OfficialTeamDef[] = [
   { teamName: 'المؤسسة تحت 15 سنة - بنات - ج', club: 'المؤسسة', category: 'تحت 15 سنة', gender: 'بنات', group: 'ج', birthYear: 2011 },
   { teamName: 'المؤسسة تحت 15 سنة - بنين - أ', club: 'المؤسسة', category: 'تحت 15 سنة', gender: 'بنين', group: 'أ', birthYear: 2011 },
   { teamName: 'المؤسسة تحت 17 سنة - بنات - أ', club: 'المؤسسة', category: 'تحت 17 سنة', gender: 'بنات', group: 'أ', birthYear: 2009 },
-  { teamName: 'المؤسسة تحت 17 سنة - بنات - ب', club: 'المؤسسة', category: 'تحت 17 سنة', gender: 'بنات', group: 'ب', birthYear: 2009 }
+  { teamName: 'المؤسسة تحت 17 سنة - بنات - ب', club: 'المؤسسة', category: 'تحت 17 سنة', gender: 'بنات', group: 'ب', birthYear: 2009 },
+  { teamName: 'المؤسسة الفريق الأول - بنات', club: 'المؤسسة', category: 'الفريق الأول', gender: 'بنات', birthYear: 2005 }
 ];
 
 export interface MasterPlayerRow {
@@ -171,6 +172,49 @@ export interface TrainingSessionRecord {
   CreatedAt?: string;
   Status?: 'Scheduled' | 'Completed' | 'Cancelled';
   Notes?: string;
+}
+
+// Coach Team Schedule Configuration Interface (إدارة مواعيد وتدريبات الفرقة)
+export interface TeamWeeklyScheduleSlot {
+  id?: string;
+  day: 'السبت' | 'الأحد' | 'الإثنين' | 'الثلاثاء' | 'الأربعاء' | 'الخميس' | 'الجمعة' | string;
+  startTime: string;                   // HH:mm (e.g. "18:00")
+  endTime: string;                     // HH:mm (e.g. "19:30")
+  location: string;                    // Venue / Court Name (e.g. "ملعب التنس الرئيسي")
+  court?: string;                      // Optional alias
+  notes?: string;
+}
+
+export interface MonthlyTrainingUnit {
+  session: TrainingSessionRecord;
+  unitNumber: number;
+  dateStr: string;
+  dayName: string;
+  timeRange: string;
+  location: string;
+  isCompleted: boolean;
+  totalRosterCount: number;
+  recordedAttendanceCount: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  excusedCount: number;
+  attendanceRate: number; // e.g. 95.5 (%)
+  status: 'Scheduled' | 'Completed' | 'Cancelled';
+}
+
+export interface MonthlyTeamTrackingSummary {
+  teamName: string;
+  month: number;
+  year: number;
+  monthLabel: string;
+  totalUnitsInMonth: number;
+  completedUnitsCount: number;
+  upcomingUnitsCount: number;
+  totalExpectedAttendanceSlots: number;
+  totalPresentAttendanceSlots: number;
+  monthlyAverageAttendanceRate: number;
+  units: MonthlyTrainingUnit[];
 }
 
 // 4. ATTENDANCE SHEET
@@ -890,6 +934,255 @@ export interface ClubAnalyticsReport {
     availableGenders: string[];
   };
   generatedAt: string;
+}
+
+// -------------------------------------------------------------
+// PHASE 13 — SMART ATTENDANCE ALERT SYSTEM
+// -------------------------------------------------------------
+
+export type AlertType =
+  | 'PLAYER_ABSENCE'
+  | 'PLAYER_LATENESS'
+  | 'TEAM_LOW_ATTENDANCE'
+  | 'MISSING_ATTENDANCE';
+
+export type AlertSeverity = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export type AlertStatus = 'ACTIVE' | 'RESOLVED' | 'DISMISSED';
+
+export interface AlertRecord {
+  AlertID: string;                  // ALT-00001
+  AlertType: AlertType;
+  Status: AlertStatus;
+  Severity: AlertSeverity;
+  RelatedEntityType: 'PLAYER' | 'TEAM' | 'SESSION';
+  RelatedEntityId: string;          // PlayerID / TeamName / SessionID
+  RelatedEntityName: string;        // Human-readable display name
+  TeamContext?: string;             // Team name for player-level alerts
+  Title: string;                    // Short title
+  Details: string;                  // Full description
+  DateGenerated: string;            // ISO date string
+  ResolvedAt?: string;
+  ResolvedBy?: string;
+  DismissedAt?: string;
+  DismissedBy?: string;
+  MetaData?: Record<string, any>;   // e.g. { count: 4, threshold: 3, windowDays: 30 }
+  Fingerprint: string;              // Dedup key: AlertType::EntityId::windowKey
+}
+
+export interface AlertThresholdsConfig {
+  maxAbsences: number;              // ALERT_MAX_ABSENCES (default 3)
+  absenceWindowDays: number;        // ALERT_ABSENCE_WINDOW_DAYS (default 30)
+  maxLateness: number;              // ALERT_MAX_LATENESS (default 3)
+  latenessWindowDays: number;       // ALERT_LATENESS_WINDOW_DAYS (default 30)
+  minTeamAttendancePct: number;     // ALERT_MIN_TEAM_ATTENDANCE_PCT (default 75)
+}
+
+export interface AlertStats {
+  total: number;
+  active: number;
+  dismissed: number;
+  resolved: number;
+  byType: Record<AlertType, number>;
+}
+
+export interface AlertGenerationResult {
+  success: boolean;
+  newAlerts: number;
+  updatedAlerts: number;
+  skippedDuplicates: number;
+  totalAlerts: number;
+  generatedAt: string;
+  triggeredAlerts: AlertRecord[];   // Newly created or updated alerts (for future notification hook)
+}
+
+export interface AlertsReport {
+  alerts: AlertRecord[];
+  stats: AlertStats;
+  thresholds: AlertThresholdsConfig;
+  generatedAt: string;
+}
+
+// -------------------------------------------------------------
+// PHASE 14 — REPORTING SYSTEM TYPES
+// -------------------------------------------------------------
+
+export type ReportType =
+  | 'DAILY_ATTENDANCE'
+  | 'WEEKLY_TEAM'
+  | 'MONTHLY_TEAM'
+  | 'PLAYER_ATTENDANCE'
+  | 'TEAM_ATTENDANCE'
+  | 'COACH_ATTENDANCE_ACTIVITY';
+
+export interface ReportFilterParams {
+  reportType?: ReportType;
+  startDate?: string;
+  endDate?: string;
+  teamName?: string;
+  playerId?: string;
+  coachId?: string;
+  teamBirthYear?: string | number;
+  gender?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface ReportSummaryMetrics {
+  totalRecords: number;
+  totalSessions: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  excusedCount: number;
+  attendanceRate: number; // %
+  absenceRate: number;    // %
+  lateRate: number;       // %
+  averageDisciplineScore?: number; // 0 - 100
+}
+
+export interface DailyAttendanceReportRow {
+  date: string;
+  sessionId: string;
+  teamName: string;
+  coachName: string;
+  location: string;
+  timeRange: string;
+  totalPlayers: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  excusedCount: number;
+  attendanceRate: number;
+  absenceRate: number;
+  lateRate: number;
+  records: Array<{
+    playerId: string;
+    playerName: string;
+    status: AttendanceStatus;
+    arrivalTime?: string;
+    lateMinutes?: number;
+    excuseType?: string;
+    notes?: string;
+  }>;
+}
+
+export interface WeeklyTeamReportRow {
+  weekKey: string;          // e.g. "2026-W34"
+  weekLabel: string;        // e.g. "أسبوع 25-31 أغسطس 2026"
+  teamName: string;
+  teamBirthYear?: string | number;
+  gender?: string;
+  sessionCount: number;
+  totalAttendances: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  excusedCount: number;
+  attendanceRate: number;
+  absenceRate: number;
+  lateRate: number;
+  disciplineScore: number;
+}
+
+export interface MonthlyTeamReportRow {
+  monthKey: string;         // e.g. "2026-08"
+  monthLabel: string;       // e.g. "أغسطس 2026"
+  teamName: string;
+  teamBirthYear?: string | number;
+  gender?: string;
+  sessionCount: number;
+  uniquePlayersCount: number;
+  totalAttendances: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  excusedCount: number;
+  attendanceRate: number;
+  absenceRate: number;
+  lateRate: number;
+  disciplineScore: number;
+}
+
+export interface PlayerAttendanceReportRow {
+  playerId: string;
+  fullName: string;
+  shortName: string;
+  teamName: string;
+  gender?: string;
+  birthYear?: string | number;
+  totalSessions: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  excusedCount: number;
+  attendanceRate: number;
+  absenceRate: number;
+  lateRate: number;
+  disciplineScore: number;
+  history: Array<{
+    date: string;
+    sessionId: string;
+    status: AttendanceStatus;
+    lateMinutes?: number;
+    notes?: string;
+  }>;
+}
+
+export interface TeamAttendanceReportRow {
+  teamName: string;
+  club?: string;
+  teamBirthYear?: string | number;
+  gender?: string;
+  headCoachName?: string;
+  playerCount: number;
+  sessionCount: number;
+  totalAttendances: number;
+  presentCount: number;
+  lateCount: number;
+  absentCount: number;
+  excusedCount: number;
+  attendanceRate: number;
+  absenceRate: number;
+  lateRate: number;
+  disciplineScore: number;
+}
+
+export interface CoachActivityReportRow {
+  coachId: string;
+  coachName: string;
+  coachEmail: string;
+  role: string;
+  assignedTeams: string[];
+  scheduledSessionsCount: number;
+  conductedSessionsCount: number;
+  totalAttendanceRecordsLogged: number;
+  avgTeamAttendanceRate: number;
+  lastActiveDate?: string;
+}
+
+export interface ReportDataPayload {
+  reportType: ReportType;
+  title: string;
+  generatedAt: string;
+  generatedByUser: string;
+  filtersApplied: ReportFilterParams;
+  summary: ReportSummaryMetrics;
+  dailyRows?: DailyAttendanceReportRow[];
+  weeklyRows?: WeeklyTeamReportRow[];
+  monthlyRows?: MonthlyTeamReportRow[];
+  playerRows?: PlayerAttendanceReportRow[];
+  teamRows?: TeamAttendanceReportRow[];
+  coachRows?: CoachActivityReportRow[];
+}
+
+export interface ReportFilterOptions {
+  availableReportTypes: Array<{ id: ReportType; label: string; labelEn: string }>;
+  availableTeams: string[];
+  availablePlayers: Array<{ id: string; name: string; team: string }>;
+  availableCoaches: Array<{ id: string; name: string; email: string }>;
+  availableBirthYears: string[];
+  availableGenders: string[];
 }
 
 

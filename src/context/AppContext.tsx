@@ -17,34 +17,106 @@ export interface PresetAccount {
 export const PRESET_ACCOUNTS: PresetAccount[] = [
   {
     email: 'admin@volleyball.club',
-    name: 'كابتن / مجدي عبد الرازق (Director)',
+    name: 'الكابتن / إكرامي حسن (رئيس الجهاز - المدير الفني)',
     role: 'ADMIN',
     status: 'Active',
-    teams: ['براعم 2015 بنات', 'براعم 2014 بنات', 'براعم 2015 بنين'],
+    teams: ['جميع الفرق الـ 20 الرسمية'],
     permissionLevel: 'ALL_PERMISSIONS'
   },
   {
     email: 'coach.ahmed@volleyball.club',
-    name: 'كابتن / أحمد كمال (Head Coach)',
+    name: 'الكابتن / أحمد سالم',
     role: 'HEAD_COACH',
     status: 'Active',
-    teams: ['براعم 2015 بنات'],
+    teams: ['راية براعم 2017 - بنات - أ', 'راية براعم 2015 - بنات - أ'],
     permissionLevel: 'FULL_MANAGE'
   },
   {
-    email: 'coach.mahmoud@volleyball.club',
-    name: 'كابتن / محمود إبراهيم (Head Coach)',
+    email: 'coach.mohamed.mostafa@volleyball.club',
+    name: 'الكابتن / محمد مصطفى',
     role: 'HEAD_COACH',
     status: 'Active',
-    teams: ['براعم 2014 بنات'],
+    teams: ['راية براعم 2016 - بنات - أ', 'المؤسسة براعم 2015 - بنات', 'راية براعم 2015&2016 - بنات - ب'],
     permissionLevel: 'FULL_MANAGE'
   },
   {
-    email: 'coach.mona@volleyball.club',
-    name: 'كابتن / منى عبد العزيز (Assistant Coach)',
+    email: 'coach.mostafa.ramadan@volleyball.club',
+    name: 'الكابتن / مصطفى رمضان',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['المؤسسة براعم 2015 - بنين', 'المؤسسة تحت 17 سنة - بنات - أ'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.osama.kamal@volleyball.club',
+    name: 'الكابتن / أسامة كمال',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['المؤسسة تحت 13 سنة - بنين - أ', 'المؤسسة تحت 13 سنة - بنات - ب'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.amr.helbawy@volleyball.club',
+    name: 'الكابتن / عمرو الهلباوي',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['المؤسسة تحت 13 سنة - بنات - أ', 'المؤسسة تحت 15 سنة - بنات - أ'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.sameh.mostafa@volleyball.club',
+    name: 'الكابتن / سامح مصطفى',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['راية تحت 13 سنة - بنات - أ', 'المؤسسة تحت 15 سنة - بنات - ج'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.omar.elgizawy@volleyball.club',
+    name: 'الكابتن / عمر الجيزاوى',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['المؤسسة تحت 15 سنة - بنين - أ', 'المؤسسة تحت 15 سنة - بنات - ب', 'المؤسسة تحت 17 سنة - بنات - ب'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.haidy.fouad@volleyball.club',
+    name: 'الكابتن / هايدى فؤاد',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['راية براعم 2018+ - بنات - أ'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.mai.samir@volleyball.club',
+    name: 'الكابتن / مى سمير',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['راية براعم 2018+ - بنات - ب'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.enan@volleyball.club',
+    name: 'الكابتن / عنان عاطف',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['راية براعم 2017 - بنات - ب'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.ahmed.hesham@volleyball.club',
+    name: 'الكابتن / أحمد هشام',
+    role: 'HEAD_COACH',
+    status: 'Active',
+    teams: ['راية تحت 19 سنة - بنات - أ'],
+    permissionLevel: 'FULL_MANAGE'
+  },
+  {
+    email: 'coach.aya@volleyball.club',
+    name: 'الكابتن / أية الكريوني',
     role: 'ASSISTANT_COACH',
     status: 'Active',
-    teams: ['براعم 2015 بنات'],
+    teams: ['راية براعم 2017 - بنات - أ'],
     permissionLevel: 'RECORD_ONLY'
   }
 ];
@@ -65,6 +137,7 @@ export interface Translations {
 
   // Phase 3 App Navigation (Admin)
   navDashboard: string;
+  navAlerts: string;
   navSessions: string;
   navPlayers: string;
   navCoaches: string;
@@ -260,6 +333,7 @@ const translations: Record<Language, Translations> = {
 
     // Phase 3 App Navigation (Admin)
     navDashboard: 'لوحة التحكم',
+    navAlerts: 'التنبيهات الذكية',
     navSessions: 'الحصص التدريبية',
     navPlayers: 'اللاعبون',
     navCoaches: 'المدربون',
@@ -453,6 +527,7 @@ const translations: Record<Language, Translations> = {
 
     // Phase 3 App Navigation (Admin)
     navDashboard: 'Dashboard',
+    navAlerts: 'Smart Alerts',
     navSessions: 'Training Sessions',
     navPlayers: 'Players',
     navCoaches: 'Coaches',

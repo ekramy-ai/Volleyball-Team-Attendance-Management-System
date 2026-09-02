@@ -9,11 +9,13 @@ import { LoginView } from '../views/LoginView';
 
 // Admin Views
 import { AdminDashboardView } from '../views/AdminDashboardView';
+import { SmartAlertsView } from '../views/SmartAlertsView';
 import { PlayersView } from '../views/PlayersView';
 import { CoachesView } from '../views/CoachesView';
 import { TeamAssignmentsView } from '../views/TeamAssignmentsView';
 import { AttendanceView } from '../views/AttendanceView';
 import { ReportsView } from '../views/ReportsView';
+import { AuditLogView } from '../views/AuditLogView';
 import { SettingsView } from '../views/SettingsView';
 import { DatabaseSettingsView } from '../views/DatabaseSettingsView';
 
@@ -190,12 +192,14 @@ export const AppShell: React.FC = () => {
             <div className="space-y-6">
               {/* ADMIN VIEWS */}
               {isAdmin && currentView === 'admin-dashboard' && <AdminDashboardView />}
+              {isAdmin && currentView === 'admin-alerts' && <SmartAlertsView />}
               {isAdmin && currentView === 'admin-sessions' && <TrainingSessionsView />}
               {isAdmin && currentView === 'admin-players' && <PlayersView />}
               {isAdmin && currentView === 'admin-coaches' && <CoachesView />}
               {isAdmin && currentView === 'admin-team-assignments' && <TeamAssignmentsView />}
               {isAdmin && currentView === 'admin-attendance' && <AttendanceView />}
               {isAdmin && currentView === 'admin-reports' && <ReportsView />}
+              {isAdmin && currentView === 'admin-audit-log' && <AuditLogView />}
               {isAdmin && currentView === 'admin-database-settings' && <DatabaseSettingsView />}
               {isAdmin && currentView === 'admin-settings' && <SettingsView />}
 
@@ -206,6 +210,7 @@ export const AppShell: React.FC = () => {
               {!isAdmin && currentView === 'coach-attendance' && <CoachAttendanceView />}
               {!isAdmin && currentView === 'coach-history' && <CoachAttendanceHistoryView />}
               {!isAdmin && currentView === 'coach-stats' && <CoachPlayerStatsView />}
+              {!isAdmin && currentView === 'coach-reports' && <ReportsView />}
             </div>
           )}
         </main>

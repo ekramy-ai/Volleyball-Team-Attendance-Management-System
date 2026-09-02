@@ -331,7 +331,50 @@ async function startServer() {
     }
   });
 
-  // 11. Security Audit Logs Query
+  // 11. Security Audit Logs Query (Admin Protected with Multi-Criteria Filters)
+  app.get('/api/audit-logs', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.query.userEmail || 'admin@volleyball.club');
+      const adminGuard = MasterDatabaseService.requireAdmin(userEmail);
+      if (!adminGuard.allowed) {
+        return res.status(403).json({ success: false, error: adminGuard.reason });
+      }
+
+      const filters = {
+        userEmail: req.query.email ? String(req.query.email) : undefined,
+        userRole: req.query.role ? String(req.query.role) : undefined,
+        action: req.query.action ? String(req.query.action) : undefined,
+        entityType: req.query.entityType ? String(req.query.entityType) : undefined,
+        entityID: req.query.entityID ? String(req.query.entityID) : undefined,
+        startDate: req.query.startDate ? String(req.query.startDate) : undefined,
+        endDate: req.query.endDate ? String(req.query.endDate) : undefined,
+        search: req.query.search ? String(req.query.search) : undefined
+      };
+
+      const logs = MasterDatabaseService.getAuditLogs(filters);
+      res.json({ success: true, count: logs.length, logs });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 11.1 Security & Audit KPI Statistics
+  app.get('/api/audit-logs/stats', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.query.userEmail || 'admin@volleyball.club');
+      const adminGuard = MasterDatabaseService.requireAdmin(userEmail);
+      if (!adminGuard.allowed) {
+        return res.status(403).json({ success: false, error: adminGuard.reason });
+      }
+
+      const stats = MasterDatabaseService.getAuditStats();
+      res.json({ success: true, stats });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Legacy compatibility
   app.get('/api/auth/audit-logs', (req, res) => {
     try {
       const logs = MasterDatabaseService.getAuditLogs();
@@ -468,8 +511,111 @@ async function startServer() {
 
   app.get('/api/training-sessions', (req, res) => {
     try {
-      const sessions = MasterDatabaseService.getWeeklyTrainingSessions();
+      const coachId = req.query.coachId ? String(req.query.coachId) : undefined;
+      const teamName = req.query.teamName ? String(req.query.teamName) : undefined;
+      const day = req.query.day ? String(req.query.day) : undefined;
+      const sessions = MasterDatabaseService.getWeeklyTrainingSessions({ coachId, teamName, day });
       res.json({ success: true, count: sessions.length, sessions });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Coach Team Schedule Queries
+  app.get('/api/coaches/schedules', (req, res) => {
+    try {
+      const coachId = req.query.coachId ? String(req.query.coachId) : undefined;
+      const teamName = req.query.teamName ? String(req.query.teamName) : undefined;
+      const day = req.query.day ? String(req.query.day) : undefined;
+      const sessions = MasterDatabaseService.getWeeklyTrainingSessions({ coachId, teamName, day });
+      res.json({ success: true, count: sessions.length, sessions });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Coach Control: Get Team Weekly Recurring Schedule Slots
+  app.get('/api/coaches/team-schedule', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-user-email'] || req.query.userEmail || 'admin@volleyball.club');
+      const teamName = req.query.teamName ? String(req.query.teamName) : '';
+      if (!teamName) {
+        return res.status(400).json({ success: false, error: 'Team name is required.' });
+      }
+
+      const result = MasterDatabaseService.getTeamWeeklySchedule(userEmail, teamName);
+      if (!result.success) {
+        return res.status(403).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Coach Control: Configure & Save Team Weekly Recurring Schedule (Days, Times, Courts)
+  app.post('/api/coaches/team-schedule', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-user-email'] || req.body.userEmail || 'admin@volleyball.club');
+      const { teamName, slots } = req.body;
+      if (!teamName) {
+        return res.status(400).json({ success: false, error: 'Team name is required.' });
+      }
+
+      const result = MasterDatabaseService.saveTeamWeeklySchedule(userEmail, teamName, slots || []);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Coach & Admin Control: Get Monthly Team Training Units and Tracking Summary
+  app.get('/api/coaches/monthly-tracking', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-user-email'] || req.query.userEmail || 'admin@volleyball.club');
+      const teamName = req.query.teamName ? String(req.query.teamName) : '';
+      const month = req.query.month ? parseInt(String(req.query.month), 10) : (new Date().getMonth() + 1);
+      const year = req.query.year ? parseInt(String(req.query.year), 10) : new Date().getFullYear();
+
+      if (!teamName) {
+        return res.status(400).json({ success: false, error: 'Team name is required.' });
+      }
+
+      const summary = MasterDatabaseService.getMonthlyTeamTrackingSummary(userEmail, teamName, month, year);
+      if (!summary.success) {
+        return res.status(403).json(summary);
+      }
+      res.json(summary);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Coach & Admin Control: Automatically Generate Training Unit Dates for Entire Month
+  app.post('/api/coaches/generate-monthly-schedule', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-user-email'] || req.body.userEmail || 'admin@volleyball.club');
+      const { teamName, month, year, slots } = req.body;
+
+      if (!teamName) {
+        return res.status(400).json({ success: false, error: 'Team name is required.' });
+      }
+
+      const result = MasterDatabaseService.generateMonthlyTrainingSchedule(
+        userEmail,
+        teamName,
+        month ? parseInt(String(month), 10) : (new Date().getMonth() + 1),
+        year ? parseInt(String(year), 10) : new Date().getFullYear(),
+        slots || []
+      );
+
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
@@ -714,7 +860,7 @@ async function startServer() {
   // 29. Update Training Session
   app.put('/api/sessions/:id', (req, res) => {
     try {
-      const userEmail = String(req.headers['x-user-email'] || req.body.userEmail || '');
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body.userEmail || req.body.email || '');
       if (!userEmail) {
         return res.status(401).json({ success: false, error: 'User email required' });
       }
@@ -743,7 +889,7 @@ async function startServer() {
   // 30. Cancel Training Session (Safe cancellation preserving attendance data)
   app.patch('/api/sessions/:id/cancel', (req, res) => {
     try {
-      const userEmail = String(req.headers['x-user-email'] || req.body.userEmail || '');
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body.userEmail || req.body.email || '');
       if (!userEmail) {
         return res.status(401).json({ success: false, error: 'User email required' });
       }
@@ -765,7 +911,7 @@ async function startServer() {
   // 31. Delete Training Session (Guarded against historical attendance)
   app.delete('/api/sessions/:id', (req, res) => {
     try {
-      const userEmail = String(req.headers['x-user-email'] || req.body.userEmail || '');
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body.userEmail || req.body.email || '');
       if (!userEmail) {
         return res.status(401).json({ success: false, error: 'User email required' });
       }
@@ -806,7 +952,7 @@ async function startServer() {
   // 33. Save Session Attendance (Multi-layer guarded batch recording with Phase 7 integrity engine)
   app.post('/api/sessions/:id/attendance', (req, res) => {
     try {
-      const userEmail = String(req.headers['x-user-email'] || req.body.userEmail || '');
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body.userEmail || req.body.email || '');
       if (!userEmail) {
         return res.status(401).json({ success: false, errorCode: 'USER_AUTH_REQUIRED', error: 'User email required for authentication' });
       }
@@ -838,7 +984,7 @@ async function startServer() {
   // 34. Phase 7: Attendance Validation Pre-flight Check
   app.post('/api/attendance/validate', (req, res) => {
     try {
-      const userEmail = String(req.headers['x-user-email'] || req.body.userEmail || '');
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body.userEmail || req.body.email || '');
       const { sessionId, items } = req.body;
       const validation = MasterDatabaseService.validateAttendanceSubmission(userEmail, sessionId, items);
       if (!validation.isValid) {
@@ -1297,6 +1443,198 @@ async function startServer() {
       res.status(500).json({ success: false, error: err.message });
     }
   });
+
+  // -------------------------------------------------------------
+  // PHASE 13: SMART ATTENDANCE ALERT SYSTEM API
+  // -------------------------------------------------------------
+
+  // 59. Get Alerts Report / List
+  app.get('/api/alerts', (req, res) => {
+    try {
+      const { status, type, severity, entityId, teamName, search } = req.query;
+      const filters: any = {};
+      if (status) filters.status = String(status);
+      if (type) filters.type = String(type);
+      if (severity) filters.severity = String(severity);
+      if (entityId) filters.entityId = String(entityId);
+      if (teamName) filters.teamName = String(teamName);
+      if (search) filters.search = String(search);
+
+      const report = MasterDatabaseService.getAlertsReport(filters);
+      res.json({ success: true, ...report });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 60. Generate / Evaluate Alerts Engine
+  app.post('/api/alerts/generate', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body?.userEmail || 'admin@volleyball.club');
+      const result = MasterDatabaseService.generateAlerts(userEmail);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 61. Get Alert Thresholds
+  app.get('/api/alerts/thresholds', (req, res) => {
+    try {
+      const thresholds = MasterDatabaseService.getAlertThresholds();
+      res.json({ success: true, thresholds });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 62. Update Alert Thresholds (Admin only)
+  app.put('/api/alerts/thresholds', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body?.userEmail || 'admin@volleyball.club');
+      const thresholds = req.body?.thresholds || req.body;
+      const result = MasterDatabaseService.updateAlertThresholds(userEmail, thresholds);
+      if (!result.success) {
+        return res.status(403).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 63. Update Alert Status (RESOLVED / DISMISSED)
+  app.patch('/api/alerts/:alertId/status', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.body?.userEmail || 'admin@volleyball.club');
+      const { alertId } = req.params;
+      const { status } = req.body;
+
+      if (status !== 'RESOLVED' && status !== 'DISMISSED') {
+        return res.status(400).json({ success: false, error: 'Status must be either RESOLVED or DISMISSED.' });
+      }
+
+      const result = MasterDatabaseService.updateAlertStatus(alertId, status, userEmail);
+      if (!result.success) {
+        return res.status(404).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 64. Get Alert Stats
+  app.get('/api/alerts/stats', (req, res) => {
+    try {
+      const stats = MasterDatabaseService.getAlertStats();
+      res.json({ success: true, stats });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // -------------------------------------------------------------
+  // PHASE 14: PROFESSIONAL REPORTING SYSTEM API
+  // -------------------------------------------------------------
+
+  // 65. Get Report Filter Options (Role-Scoped)
+  app.get('/api/reports/filter-options', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.query.userEmail || 'admin@volleyball.club');
+      const options = MasterDatabaseService.getReportFilterOptions(userEmail);
+      res.json({ success: true, options });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 66. Generate Custom Attendance Report (RBAC Protected)
+  app.get('/api/reports/generate', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.query.userEmail || 'admin@volleyball.club');
+      const {
+        reportType,
+        startDate,
+        endDate,
+        teamName,
+        playerId,
+        coachId,
+        teamBirthYear,
+        gender,
+        sortBy,
+        sortOrder
+      } = req.query;
+
+      const filters: any = {};
+      if (reportType) filters.reportType = String(reportType) as any;
+      if (startDate) filters.startDate = String(startDate);
+      if (endDate) filters.endDate = String(endDate);
+      if (teamName) filters.teamName = String(teamName);
+      if (playerId) filters.playerId = String(playerId);
+      if (coachId) filters.coachId = String(coachId);
+      if (teamBirthYear) filters.teamBirthYear = String(teamBirthYear);
+      if (gender) filters.gender = String(gender);
+      if (sortBy) filters.sortBy = String(sortBy);
+      if (sortOrder) filters.sortOrder = String(sortOrder) as any;
+
+      const result = MasterDatabaseService.generateReport(userEmail, filters);
+      if (!result.success) {
+        return res.status(403).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // 67. Download Exported Report File (CSV or Excel) (RBAC Protected)
+  app.get('/api/reports/export', (req, res) => {
+    try {
+      const userEmail = String(req.headers['x-admin-email'] || req.headers['x-user-email'] || req.query.userEmail || 'admin@volleyball.club');
+      const {
+        format = 'csv',
+        reportType,
+        startDate,
+        endDate,
+        teamName,
+        playerId,
+        coachId,
+        teamBirthYear,
+        gender
+      } = req.query;
+
+      const filters: any = {};
+      if (reportType) filters.reportType = String(reportType) as any;
+      if (startDate) filters.startDate = String(startDate);
+      if (endDate) filters.endDate = String(endDate);
+      if (teamName) filters.teamName = String(teamName);
+      if (playerId) filters.playerId = String(playerId);
+      if (coachId) filters.coachId = String(coachId);
+      if (teamBirthYear) filters.teamBirthYear = String(teamBirthYear);
+      if (gender) filters.gender = String(gender);
+
+      const exportRes = MasterDatabaseService.generateReportExportFile(userEmail, filters, format === 'excel' ? 'excel' : 'csv');
+      if (!exportRes.success) {
+        return res.status(403).json(exportRes);
+      }
+
+      const content = exportRes.content || '';
+      const bomBuffer = Buffer.from([0xEF, 0xBB, 0xBF]);
+      const cleanContent = content.startsWith('\uFEFF') ? content.slice(1) : content;
+      const bodyBuffer = Buffer.from(cleanContent, 'utf-8');
+      const finalBuffer = Buffer.concat([bomBuffer, bodyBuffer]);
+
+      res.setHeader('Content-Type', exportRes.mimeType || 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(exportRes.filename || 'report.csv')}"`);
+      res.send(finalBuffer);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+
+
 
 
 

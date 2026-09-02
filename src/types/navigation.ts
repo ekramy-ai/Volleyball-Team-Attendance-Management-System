@@ -2,12 +2,14 @@ import { UserRole } from './database';
 
 export type AdminViewId = 
   | 'admin-dashboard'
+  | 'admin-alerts'
   | 'admin-players'
   | 'admin-coaches'
   | 'admin-team-assignments'
   | 'admin-sessions'
   | 'admin-attendance'
   | 'admin-reports'
+  | 'admin-audit-log'
   | 'admin-settings'
   | 'admin-database-settings';
 
@@ -17,7 +19,8 @@ export type CoachViewId =
   | 'coach-sessions'
   | 'coach-attendance'
   | 'coach-history'
-  | 'coach-stats';
+  | 'coach-stats'
+  | 'coach-reports';
 
 export type DevViewId =
   | 'dev-master'

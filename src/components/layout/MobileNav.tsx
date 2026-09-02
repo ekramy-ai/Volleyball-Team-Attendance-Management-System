@@ -18,7 +18,9 @@ import {
   User,
   Shield,
   ArrowRightLeft,
-  Database
+  Database,
+  BellRing,
+  ShieldAlert
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AppViewId, AdminViewId, CoachViewId } from '../../types/navigation';
@@ -48,8 +50,8 @@ export const MobileNav: React.FC = () => {
   // Bottom Navigation Bar Items (Thumb-friendly primary items for mobile)
   const adminBottomTabs = [
     { id: 'admin-dashboard' as AppViewId, label: t.navDashboard, icon: <LayoutDashboard className="w-5 h-5" /> },
+    { id: 'admin-alerts' as AppViewId, label: t.navAlerts, icon: <BellRing className="w-5 h-5 text-rose-500" /> },
     { id: 'admin-sessions' as AppViewId, label: t.navSessions, icon: <CalendarDays className="w-5 h-5" /> },
-    { id: 'admin-players' as AppViewId, label: t.navPlayers, icon: <Users className="w-5 h-5" /> },
     { id: 'admin-attendance' as AppViewId, label: t.navAttendance, icon: <ClipboardCheck className="w-5 h-5" /> },
   ];
 
@@ -65,12 +67,14 @@ export const MobileNav: React.FC = () => {
   // Full Menus for the Drawer
   const adminFullMenu: { id: AdminViewId; label: string; icon: React.ReactNode }[] = [
     { id: 'admin-dashboard', label: t.navDashboard, icon: <LayoutDashboard className="w-4 h-4" /> },
+    { id: 'admin-alerts', label: t.navAlerts, icon: <BellRing className="w-4 h-4 text-rose-500" /> },
     { id: 'admin-sessions', label: t.navSessions, icon: <CalendarDays className="w-4 h-4 text-orange-500" /> },
     { id: 'admin-players', label: t.navPlayers, icon: <Users className="w-4 h-4" /> },
     { id: 'admin-coaches', label: t.navCoaches, icon: <UserCheck className="w-4 h-4" /> },
     { id: 'admin-team-assignments', label: t.navTeamAssignments, icon: <Layers className="w-4 h-4" /> },
     { id: 'admin-attendance', label: t.navAttendance, icon: <ClipboardCheck className="w-4 h-4" /> },
     { id: 'admin-reports', label: t.navReports, icon: <BarChart3 className="w-4 h-4" /> },
+    { id: 'admin-audit-log', label: language === 'ar' ? 'سجل التدقيق والأمان' : 'Audit & Security Logs', icon: <ShieldAlert className="w-4 h-4 text-rose-500" /> },
     { id: 'admin-database-settings', label: t.navDatabaseSettings, icon: <Database className="w-4 h-4 text-emerald-500" /> },
     { id: 'admin-settings', label: t.navSettings, icon: <Settings className="w-4 h-4" /> }
   ];
@@ -81,7 +85,8 @@ export const MobileNav: React.FC = () => {
     { id: 'coach-teams', label: t.navMyTeams, icon: <Users className="w-4 h-4" /> },
     { id: 'coach-attendance', label: t.navCoachAttendance, icon: <CalendarCheck className="w-4 h-4 text-emerald-500" /> },
     { id: 'coach-history', label: t.navAttendanceHistory, icon: <History className="w-4 h-4" /> },
-    { id: 'coach-stats', label: t.navPlayerStats, icon: <Activity className="w-4 h-4" /> }
+    { id: 'coach-stats', label: t.navPlayerStats, icon: <Activity className="w-4 h-4" /> },
+    { id: 'coach-reports', label: t.navReports, icon: <BarChart3 className="w-4 h-4 text-purple-500" /> }
   ];
 
   return (
