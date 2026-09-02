@@ -131,10 +131,11 @@ console.log('\n--- 3. PLAYER DATABASE INTEGRITY ---');
 // ── 4. TRAINING SESSIONS ENGINE TESTS ───────────────────────────────────────
 console.log('\n--- 4. TRAINING SESSIONS ENGINE ---');
 {
+  const testDate = `2026-11-${String(Math.floor(Math.random() * 20) + 10).padStart(2, '0')}`;
   // A. Creation
   const newSessionRes = MasterDatabaseService.createTrainingSession(adminEmail, {
-    TeamName: 'براعم 2015 بنات',
-    TrainingDate: '2026-11-20',
+    TeamName: 'راية براعم 2018+ - بنات - أ',
+    TrainingDate: testDate,
     StartTime: '16:00',
     EndTime: '17:30',
     Location: 'الصالة المغطاة',
@@ -158,8 +159,8 @@ console.log('\n--- 4. TRAINING SESSIONS ENGINE ---');
 
     // C. Duplicate Session Prevention
     const dupCheck = MasterDatabaseService.createTrainingSession(adminEmail, {
-      TeamName: 'براعم 2015 بنات',
-      TrainingDate: '2026-11-20',
+      TeamName: 'راية براعم 2018+ - بنات - أ',
+      TrainingDate: testDate,
       StartTime: '16:00',
       EndTime: '17:30',
       Location: 'الصالة المغطاة'
@@ -168,6 +169,9 @@ console.log('\n--- 4. TRAINING SESSIONS ENGINE ---');
       dupCheck.success === false && dupCheck.isDuplicate === true,
       'Duplicate session on same date, time, and team is rejected'
     );
+
+    // Cleanup test session
+    MasterDatabaseService.deleteTrainingSession(adminEmail, sId);
   }
 }
 

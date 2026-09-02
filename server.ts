@@ -255,6 +255,101 @@ async function startServer() {
     }
   });
 
+  // ==================== MANUAL DATABASE MANAGEMENT & IMPORT API ====================
+
+  // Get Master Players (Both Normalized & Raw)
+  app.get('/api/master/players', (req, res) => {
+    try {
+      const players = MasterDatabaseService.getAllPlayers();
+      const rawPlayers = MasterDatabaseService.getAllMasterPlayers().map(p => p.raw);
+      res.json({ success: true, count: players.length, players, rawPlayers });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Bulk Import Master Players (CSV / Excel / JSON)
+  app.post('/api/database/import-players', (req, res) => {
+    try {
+      const adminEmail = String(req.headers['x-admin-email'] || req.body.adminEmail || 'admin@volleyball.club');
+      const { players, mode } = req.body;
+      const result = MasterDatabaseService.importMasterPlayers(adminEmail, players, mode || 'MERGE');
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Add Single Master Player
+  app.post('/api/database/players', (req, res) => {
+    try {
+      const adminEmail = String(req.headers['x-admin-email'] || req.body.adminEmail || 'admin@volleyball.club');
+      const result = MasterDatabaseService.addMasterPlayer(adminEmail, req.body);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.status(201).json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Update Single Master Player
+  app.put('/api/database/players/:id', (req, res) => {
+    try {
+      const adminEmail = String(req.headers['x-admin-email'] || req.body.adminEmail || 'admin@volleyball.club');
+      const result = MasterDatabaseService.updateMasterPlayer(adminEmail, req.params.id, req.body);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Delete Single Master Player
+  app.delete('/api/database/players/:id', (req, res) => {
+    try {
+      const adminEmail = String(req.headers['x-admin-email'] || req.body.adminEmail || 'admin@volleyball.club');
+      const result = MasterDatabaseService.deleteMasterPlayer(adminEmail, req.params.id);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Export Full Unified System Backup (JSON)
+  app.get('/api/database/export-backup', (req, res) => {
+    try {
+      const adminEmail = String(req.headers['x-admin-email'] || req.query.adminEmail || 'admin@volleyball.club');
+      const backup = MasterDatabaseService.exportFullBackup(adminEmail);
+      res.json({ success: true, backup });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // Restore Full Unified System Backup (JSON)
+  app.post('/api/database/restore-backup', (req, res) => {
+    try {
+      const adminEmail = String(req.headers['x-admin-email'] || req.body.adminEmail || 'admin@volleyball.club');
+      const result = MasterDatabaseService.importFullBackup(adminEmail, req.body.backup || req.body);
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
   // -------------------------------------------------------------
   // PHASE 2: AUTHENTICATION & AUTHORIZATION API ENDPOINTS
   // -------------------------------------------------------------

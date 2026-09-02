@@ -74,7 +74,7 @@ export const Sidebar: React.FC = () => {
     { id: 'admin-attendance', label: t.navAttendance, icon: <ClipboardCheck className="w-4 h-4" /> },
     { id: 'admin-reports', label: t.navReports, icon: <BarChart3 className="w-4 h-4" /> },
     { id: 'admin-audit-log', label: language === 'ar' ? 'سجل التدقيق والأمان' : 'Audit & Security Logs', icon: <ShieldAlert className="w-4 h-4 text-rose-500" /> },
-    { id: 'admin-database-settings', label: t.navDatabaseSettings, icon: <Database className="w-4 h-4 text-emerald-500" /> },
+    { id: 'admin-database-settings', label: language === 'ar' ? 'إدارة واستيراد قواعد البيانات' : 'Database Management Hub', icon: <Database className="w-4 h-4 text-emerald-500" /> },
     { id: 'admin-settings', label: t.navSettings, icon: <Settings className="w-4 h-4" /> }
   ];
 

@@ -142,6 +142,351 @@ export class MasterDatabaseService {
     this.persistFile('systemSettings.json', this.systemSettings);
   }
 
+  public static persistMasterPlayers(): void {
+    this.persistFile('officialMasterPlayers.json', this.masterPlayers);
+  }
+
+  public static persistAllDatabase(): void {
+    this.persistMasterPlayers();
+    this.persistCoachesAndSchedules();
+    this.persistAttendance();
+    this.persistAuditLogs();
+    this.persistSettings();
+  }
+
+  /**
+   * Generates a deterministic unique Player ID for imported players
+   */
+  public static generatePlayerId(teamName?: string, fullName?: string, index?: number): string {
+    const prefix = 'M';
+    const birthYearMatch = (teamName || '').match(/\b(20\d{2})\b/);
+    const yr = birthYearMatch ? birthYearMatch[1].slice(-2) : '15';
+    const gender = (teamName || '').includes('بنين') || (teamName || '').includes('أولاد') ? 'B' : 'G';
+    const seq = String(index || Math.floor(Math.random() * 90000000) + 10000000).slice(-8);
+    return `${prefix}-${gender}${yr}${seq.padStart(8, '0')}`;
+  }
+
+  /**
+   * Imports a batch of master players from manual CSV/Excel/JSON upload.
+   */
+  public static importMasterPlayers(
+    adminEmail: string,
+    rawRecords: any[],
+    mode: 'REPLACE' | 'MERGE' = 'MERGE'
+  ): {
+    success: boolean;
+    totalPlayers: number;
+    importedCount: number;
+    mode: 'REPLACE' | 'MERGE';
+    error?: string;
+  } {
+    const adminCheck = this.requireAdmin(adminEmail);
+    if (!adminCheck.allowed) {
+      return { success: false, totalPlayers: this.masterPlayers.length, importedCount: 0, mode, error: adminCheck.reason };
+    }
+
+    if (!Array.isArray(rawRecords) || rawRecords.length === 0) {
+      return { success: false, totalPlayers: this.masterPlayers.length, importedCount: 0, mode, error: 'لم يتم توفير سجلات صالحة للاستيراد.' };
+    }
+
+    const standardizedList: MasterPlayerRow[] = rawRecords.map((r, idx) => {
+      const pId = String(r['Player ID'] || r.PlayerID || r.playerId || r.id || r['كود اللاعب'] || r['رمز اللاعب'] || '').trim();
+      const fullName = String(r['اسم اللاعب رباعي'] || r['الأسم'] || r['الاسم'] || r.fullName || r.name || r['اسم اللاعب'] || '').trim();
+      const team = String(r['الفريق'] || r.teamName || r.team || r['اسم الفريق'] || '').trim();
+      const gender = String(r['النوع'] || r.gender || (team.includes('بنين') ? 'بنين' : 'بنات')).trim();
+      const phone = String(r['رقم التليفون'] || r['الموبايل'] || r['الهاتف'] || r.phone || '').trim();
+      const dob = String(r['تاريخ الميلاد'] || r.dob || r.dateOfBirth || '').trim();
+      const club = String(r['النادى'] || r['النادي'] || r.club || 'المؤسسة').trim();
+      const rank = String(r['Rank'] || r['الترتيب'] || r.rank || (idx + 1)).trim();
+      const rating = String(r['تصنيف'] || r.rating || 'أ').trim();
+
+      const yearMatch = team.match(/\b(20\d{2})\b/) || dob.match(/\b(20\d{2})\b/);
+      const birthYear = yearMatch ? yearMatch[1] : '2015';
+
+      const finalId = pId || this.generatePlayerId(team, fullName, idx + 1);
+
+      return {
+        'Player ID': finalId,
+        'الفريق': team || 'براعم 2015',
+        'مواليد الفريق': birthYear,
+        'النوع': gender,
+        'اسم اللاعب رباعي': fullName || `لاعب رقم ${idx + 1}`,
+        'الأسم': fullName || `لاعب رقم ${idx + 1}`,
+        'رقم التليفون': phone,
+        'تاريخ الميلاد': dob,
+        'النادى': club,
+        'المواليد': birthYear,
+        'Rank': rank,
+        'تصنيف': rating,
+        'اليد المفضلة': String(r['اليد المفضلة'] || r.preferredHand || '').trim(),
+        'VCF': String(r['VCF'] || '').trim()
+      } as unknown as MasterPlayerRow;
+    });
+
+    if (mode === 'REPLACE') {
+      this.masterPlayers = standardizedList;
+    } else {
+      // MERGE Mode: map existing by Player ID
+      const existingMap = new Map<string, MasterPlayerRow>();
+      this.masterPlayers.forEach(p => {
+        const idKey = (p['Player ID'] || '').trim();
+        if (idKey) existingMap.set(idKey, p);
+      });
+
+      standardizedList.forEach(newP => {
+        const idKey = (newP['Player ID'] || '').trim();
+        if (idKey && existingMap.has(idKey)) {
+          const existing = existingMap.get(idKey)!;
+          Object.assign(existing, newP);
+        } else {
+          this.masterPlayers.push(newP);
+          if (idKey) existingMap.set(idKey, newP);
+        }
+      });
+    }
+
+    // Persist to disk
+    this.persistMasterPlayers();
+
+    // Audit log
+    this.logAudit(
+      adminEmail,
+      'ADMIN',
+      'PLAYERS_DATABASE_IMPORTED',
+      'MASTER_PLAYERS',
+      'BULK',
+      `تم استيراد وتحديث قاعدة بيانات اللاعبين يدوياً بوضع (${mode}): ${standardizedList.length} سجل مستورد، إجمالي اللاعبين الحالي: ${this.masterPlayers.length}`
+    );
+
+    return {
+      success: true,
+      totalPlayers: this.masterPlayers.length,
+      importedCount: standardizedList.length,
+      mode
+    };
+  }
+
+  /**
+   * Adds a single master player record.
+   */
+  public static addMasterPlayer(
+    adminEmail: string,
+    playerData: Partial<MasterPlayerRow> & Record<string, any>
+  ): { success: boolean; player?: MasterPlayerRow; error?: string } {
+    const adminCheck = this.requireAdmin(adminEmail);
+    if (!adminCheck.allowed) {
+      return { success: false, error: adminCheck.reason };
+    }
+
+    const fullName = String(playerData['اسم اللاعب رباعي'] || playerData['الأسم'] || playerData.fullName || '').trim();
+    const teamName = String(playerData['الفريق'] || playerData.teamName || '').trim();
+    if (!fullName || !teamName) {
+      return { success: false, error: 'اسم اللاعب واسم الفريق مطلوبان.' };
+    }
+
+    const birthYearMatch = teamName.match(/\b(20\d{2})\b/);
+    const birthYear = birthYearMatch ? birthYearMatch[1] : '2015';
+    const finalId = (playerData['Player ID'] || this.generatePlayerId(teamName, fullName, this.masterPlayers.length + 1)).trim();
+
+    const newRecord: MasterPlayerRow = {
+      'Player ID': finalId,
+      'الفريق': teamName,
+      'مواليد الفريق': birthYear,
+      'النوع': playerData['النوع'] || (teamName.includes('بنين') ? 'بنين' : 'بنات'),
+      'اسم اللاعب رباعي': fullName,
+      'الأسم': fullName,
+      'رقم التليفون': playerData['رقم التليفون'] || playerData.phone || '',
+      'تاريخ الميلاد': playerData['تاريخ الميلاد'] || playerData.dob || '',
+      'النادى': playerData['النادى'] || 'المؤسسة',
+      'المواليد': birthYear,
+      'Rank': String(this.masterPlayers.length + 1),
+      'تصنيف': playerData['تصنيف'] || 'أ',
+      'اليد المفضلة': playerData['اليد المفضلة'] || '',
+      'VCF': ''
+    } as unknown as MasterPlayerRow;
+
+    this.masterPlayers.push(newRecord);
+    this.persistMasterPlayers();
+
+    this.logAudit(
+      adminEmail,
+      'ADMIN',
+      'PLAYER_ADDED',
+      'MASTER_PLAYER',
+      finalId,
+      `إضافة لاعب جديد: [${fullName}] لفريق [${teamName}] برمز [${finalId}]`
+    );
+
+    return { success: true, player: newRecord };
+  }
+
+  /**
+   * Updates an existing master player record.
+   */
+  public static updateMasterPlayer(
+    adminEmail: string,
+    playerId: string,
+    updates: Partial<MasterPlayerRow> & Record<string, any>
+  ): { success: boolean; player?: MasterPlayerRow; error?: string } {
+    const adminCheck = this.requireAdmin(adminEmail);
+    if (!adminCheck.allowed) {
+      return { success: false, error: adminCheck.reason };
+    }
+
+    const cleanId = (playerId || '').trim();
+    const player = this.masterPlayers.find(p => (p['Player ID'] || '').trim() === cleanId);
+    if (!player) {
+      return { success: false, error: `اللاعب برمز [${playerId}] غير موجود.` };
+    }
+
+    if (updates['اسم اللاعب رباعي'] || updates.fullName) {
+      const name = String(updates['اسم اللاعب رباعي'] || updates.fullName).trim();
+      player['اسم اللاعب رباعي'] = name;
+      player['الأسم'] = name;
+    }
+    if (updates['الفريق'] || updates.teamName) player['الفريق'] = String(updates['الفريق'] || updates.teamName).trim();
+    if (updates['النوع'] || updates.gender) player['النوع'] = String(updates['النوع'] || updates.gender).trim();
+    if (updates['رقم التليفون'] || updates.phone) player['رقم التليفون'] = String(updates['رقم التليفون'] || updates.phone).trim();
+    if (updates['تاريخ الميلاد'] || updates.dob) player['تاريخ الميلاد'] = String(updates['تاريخ الميلاد'] || updates.dob).trim();
+    if (updates['النادى'] || updates.club) player['النادى'] = String(updates['النادى'] || updates.club).trim();
+    if (updates['تصنيف'] || updates.rating) player['تصنيف'] = String(updates['تصنيف'] || updates.rating).trim();
+
+    this.persistMasterPlayers();
+
+    this.logAudit(
+      adminEmail,
+      'ADMIN',
+      'PLAYER_UPDATED',
+      'MASTER_PLAYER',
+      cleanId,
+      `تحديث بيانات اللاعب [${player['اسم اللاعب رباعي']}] برمز [${cleanId}]`
+    );
+
+    return { success: true, player: { ...player } };
+  }
+
+  /**
+   * Deletes a master player record.
+   */
+  public static deleteMasterPlayer(
+    adminEmail: string,
+    playerId: string
+  ): { success: boolean; error?: string } {
+    const adminCheck = this.requireAdmin(adminEmail);
+    if (!adminCheck.allowed) {
+      return { success: false, error: adminCheck.reason };
+    }
+
+    const cleanId = (playerId || '').trim();
+    const idx = this.masterPlayers.findIndex(p => (p['Player ID'] || '').trim() === cleanId);
+    if (idx === -1) {
+      return { success: false, error: `اللاعب برمز [${playerId}] غير موجود.` };
+    }
+
+    const removed = this.masterPlayers.splice(idx, 1)[0];
+    this.persistMasterPlayers();
+
+    this.logAudit(
+      adminEmail,
+      'ADMIN',
+      'PLAYER_DELETED',
+      'MASTER_PLAYER',
+      cleanId,
+      `حذف اللاعب [${removed['اسم اللاعب رباعي']}] برمز [${cleanId}] من فريق [${removed['الفريق']}]`
+    );
+
+    return { success: true };
+  }
+
+  /**
+   * Exports full unified database backup JSON package.
+   */
+  public static exportFullBackup(userEmail: string): any {
+    return {
+      exportTimestamp: new Date().toISOString(),
+      exportVersion: '2.0-manual-hub',
+      exportedBy: userEmail,
+      systemName: 'نظام إدارة تدريبات وحضور كرة الطائرة',
+      counts: {
+        players: this.masterPlayers.length,
+        coaches: this.coaches.length,
+        assignments: this.coachTeams.length,
+        sessions: this.trainingSessions.length,
+        attendanceRecords: this.attendanceRecords.length,
+        auditLogs: this.auditLogs.length
+      },
+      masterPlayers: this.masterPlayers,
+      coaches: this.coaches,
+      coachTeams: this.coachTeams,
+      trainingSessions: this.trainingSessions,
+      attendanceRecords: this.attendanceRecords,
+      auditLogs: this.auditLogs,
+      systemSettings: this.systemSettings
+    };
+  }
+
+  /**
+   * Restores full unified database backup from JSON package.
+   */
+  public static importFullBackup(
+    adminEmail: string,
+    backupData: any
+  ): { success: boolean; counts?: Record<string, number>; error?: string } {
+    const adminCheck = this.requireAdmin(adminEmail);
+    if (!adminCheck.allowed) {
+      return { success: false, error: adminCheck.reason };
+    }
+
+    if (!backupData || typeof backupData !== 'object') {
+      return { success: false, error: 'ملف النسخة الاحتياطية غير صالح أو فارغ.' };
+    }
+
+    if (Array.isArray(backupData.masterPlayers)) {
+      this.masterPlayers = backupData.masterPlayers;
+    }
+    if (Array.isArray(backupData.coaches)) {
+      this.coaches = backupData.coaches;
+    }
+    if (Array.isArray(backupData.coachTeams)) {
+      this.coachTeams = backupData.coachTeams;
+    }
+    if (Array.isArray(backupData.trainingSessions)) {
+      this.trainingSessions = backupData.trainingSessions;
+    }
+    if (Array.isArray(backupData.attendanceRecords)) {
+      this.attendanceRecords = backupData.attendanceRecords;
+    }
+    if (Array.isArray(backupData.auditLogs)) {
+      this.auditLogs = backupData.auditLogs;
+    }
+    if (Array.isArray(backupData.systemSettings)) {
+      this.systemSettings = backupData.systemSettings;
+    }
+
+    // Persist all to disk
+    this.persistAllDatabase();
+
+    const counts = {
+      players: this.masterPlayers.length,
+      coaches: this.coaches.length,
+      assignments: this.coachTeams.length,
+      sessions: this.trainingSessions.length,
+      attendanceRecords: this.attendanceRecords.length,
+      auditLogs: this.auditLogs.length
+    };
+
+    this.logAudit(
+      adminEmail,
+      'ADMIN',
+      'FULL_BACKUP_RESTORED',
+      'SYSTEM',
+      'FULL_DATABASE',
+      `تمت استعادة نسخة احتياطية شاملة للمنظومة: ${counts.players} لاعب، ${counts.coaches} مدرب، ${counts.sessions} حصة، ${counts.attendanceRecords} سجل حضور.`
+    );
+
+    return { success: true, counts };
+  }
+
   // 7. ALERTS STORE (Phase 13)
   private static alerts: AlertRecord[] = [];
   private static alertCounter: number = 0;

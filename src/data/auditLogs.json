@@ -1,5 +1,265 @@
 [
   {
+    "LogID": "LOG-00156",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:06:28.570Z"
+  },
+  {
+    "LogID": "LOG-00155",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:06:28.560Z"
+  },
+  {
+    "LogID": "LOG-00154",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:06:27.810Z"
+  },
+  {
+    "LogID": "LOG-00153",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:06:27.803Z"
+  },
+  {
+    "LogID": "LOG-00152",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:01:52.008Z"
+  },
+  {
+    "LogID": "LOG-00151",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:01:51.997Z"
+  },
+  {
+    "LogID": "LOG-00150",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:01:24.447Z"
+  },
+  {
+    "LogID": "LOG-00149",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T14:00:32.678Z"
+  },
+  {
+    "LogID": "LOG-00148",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T14:00:32.644Z"
+  },
+  {
+    "LogID": "LOG-00147",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T14:00:32.169Z"
+  },
+  {
+    "LogID": "LOG-00146",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T14:00:32.160Z"
+  },
+  {
+    "LogID": "LOG-00145",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:00:31.674Z"
+  },
+  {
+    "LogID": "LOG-00144",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T14:00:31.667Z"
+  },
+  {
+    "LogID": "LOG-00143",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:57:57.276Z"
+  },
+  {
+    "LogID": "LOG-00142",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:57:57.251Z"
+  },
+  {
+    "LogID": "LOG-00141",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:57:56.722Z"
+  },
+  {
+    "LogID": "LOG-00140",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:57:56.715Z"
+  },
+  {
+    "LogID": "LOG-00139",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T13:57:55.767Z"
+  },
+  {
+    "LogID": "LOG-00138",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T13:57:55.751Z"
+  },
+  {
+    "LogID": "LOG-00137",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T13:38:53.832Z"
+  },
+  {
+    "LogID": "LOG-00136",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T13:38:53.826Z"
+  },
+  {
+    "LogID": "LOG-00135",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0001",
+    "Details": "Logged in successfully. Authorized teams: [المؤسسة الفريق الأول - بنات, المؤسسة براعم 2015 - بنات, المؤسسة تحت 13 سنة - بنات - أ, المؤسسة تحت 15 سنة - بنات - أ, المؤسسة تحت 17 سنة - بنات - أ, راية براعم 2015 - بنات - أ, راية براعم 2016 - بنات - أ, راية براعم 2017 - بنات - أ, راية براعم 2018+ - بنات - أ, راية تحت 13 سنة - بنات - أ, راية تحت 19 سنة - بنات - أ]",
+    "Timestamp": "2026-09-02T13:37:09.751Z"
+  },
+  {
+    "LogID": "LOG-00134",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:37:05.758Z"
+  },
+  {
+    "LogID": "LOG-00133",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:37:05.732Z"
+  },
+  {
+    "LogID": "LOG-00132",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:37:04.895Z"
+  },
+  {
+    "LogID": "LOG-00131",
+    "UserEmail": "coach.ahmed@volleyball.club",
+    "UserRole": "HEAD_COACH",
+    "Action": "AUTH_LOGIN_SUCCESS",
+    "EntityType": "AUTHENTICATION",
+    "EntityID": "COACH-0002",
+    "Details": "Logged in successfully. Authorized teams: [راية براعم 2017 - بنات - أ, راية براعم 2015 - بنات - أ]",
+    "Timestamp": "2026-09-02T13:37:04.886Z"
+  },
+  {
     "LogID": "LOG-00130",
     "UserEmail": "coach.ahmed@volleyball.club",
     "UserRole": "HEAD_COACH",
@@ -1298,5 +1558,25 @@
     "EntityID": "MAIN",
     "Details": "تهيئة النظام بالكامل وتثبيت قاعدة البيانات الرسمية للجهاز الفني واللاعبين",
     "Timestamp": "2026-09-01T08:00:00.000Z"
+  },
+  {
+    "LogID": "LOG-00136",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "DATABASE_PROFILE_CREATED",
+    "EntityType": "DATABASE_CONFIGURATION",
+    "EntityID": "DB_PROF_005",
+    "Details": "Created database profile [MASTER VOLLEYBALL DATABASE 2025-2026] (SpreadsheetID: 1n3nuq-2tbzqzb-YXBxtEN9AOO9DUz5bFcuoZjP9OLVI)",
+    "Timestamp": "2026-09-02T13:38:15.040Z"
+  },
+  {
+    "LogID": "LOG-00137",
+    "UserEmail": "admin@volleyball.club",
+    "UserRole": "ADMIN",
+    "Action": "DATABASE_PROFILE_UPDATED",
+    "EntityType": "DATABASE_CONFIGURATION",
+    "EntityID": "DB_PROF_OFFICIAL",
+    "Details": "Updated database profile [قاعدة بيانات لاعبي ولاعبات كرة الطائرة الرسمية (Google Sheets)]",
+    "Timestamp": "2026-09-02T13:38:52.231Z"
   }
 ]
