@@ -188,7 +188,7 @@ console.log('\n--- CRITERION 5: Duplicate Records Are Prevented ---');
 
   // B. Duplicate Training Session on Same Day & Time Overlap
   const existingSessions = MasterDatabaseService.getTrainingSessions();
-  const baseSession = existingSessions[0];
+  const baseSession = existingSessions.find(s => s.Status !== 'Cancelled') || existingSessions[0];
   const dupSessionCheck = MasterDatabaseService.checkDuplicateSession(
     baseSession.TeamName,
     baseSession.TrainingDate,

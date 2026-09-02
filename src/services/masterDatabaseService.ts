@@ -203,7 +203,13 @@ export class MasterDatabaseService {
       const yearMatch = team.match(/\b(20\d{2})\b/) || dob.match(/\b(20\d{2})\b/);
       const birthYear = yearMatch ? yearMatch[1] : '2015';
 
-      const finalId = pId || this.generatePlayerId(team, fullName, idx + 1);
+      let finalId = pId;
+      if (!finalId) {
+        let counter = this.masterPlayers.length + idx + 1;
+        do {
+          finalId = this.generatePlayerId(team, fullName, counter++);
+        } while (this.masterPlayers.some(p => (p['Player ID'] || '').trim() === finalId));
+      }
 
       return {
         'Player ID': finalId,
